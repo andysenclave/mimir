@@ -1,0 +1,40 @@
+{
+  "name": "mimir",
+  "version": "0.1.0",
+  "description": "Paper trading simulator for the Indian stock market",
+  "main": "App.tsx",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "lint": "eslint src/ --ext .ts,.tsx",
+    "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
+  },
+  "dependencies": {
+    "@react-navigation/bottom-tabs": "^6.5.0",
+    "@react-navigation/native": "^6.1.9",
+    "@react-navigation/native-stack": "^6.9.17",
+    "@react-native-async-storage/async-storage": "^1.21.0",
+    "expo": "^52.0.0",
+    "expo-secure-store": "^13.0.1",
+    "react": "^18.2.0",
+    "react-native": "^0.76.0",
+    "react-native-gesture-handler": "^2.14.0",
+    "react-native-safe-area-context": "^4.8.2",
+    "react-native-screens": "^3.29.0"
+  },
+  "devDependencies": {
+    "@types/react": "~18.2.0",
+    "@types/react-native": "~0.73.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "eslint-config-expo": "^7.0.0",
+    "prettier": "^3.1.0",
+    "typescript": "~5.3.0"
+  },
+  "private": true
+}
