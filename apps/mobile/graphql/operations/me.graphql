@@ -1,0 +1,12 @@
+query Me {
+  me {
+    id
+    email
+    displayName
+    onboardingDone
+  }
+}
+
+subscription ServerHeartbeat {
+  serverHeartbeat
+}

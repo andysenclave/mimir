@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2022",
+    "outDir": "./dist",
+    "declaration": false,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "lib": ["ES2022"],
+    "types": ["node", "jest"],
+    "verbatimModuleSyntax": false,
+    "useDefineForClassFields": false,
+    "exactOptionalPropertyTypes": false,
+    "paths": {
+      "@/*": ["src/*"],
+      "@mimir/shared": ["../../packages/shared/src/index.ts"],
+      "@mimir/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*", "prisma/seed.ts"],
+  "exclude": ["node_modules", "dist"]
+}

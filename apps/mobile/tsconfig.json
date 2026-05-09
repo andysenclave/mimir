@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["DOM", "ES2022"],
+    "jsx": "react-native",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "types": ["expo-router/types", "react-native"],
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./*"],
+      "@mimir/shared": ["../../packages/shared/src/index.ts"],
+      "@mimir/shared/*": ["../../packages/shared/src/*"],
+      "@mimir/graphql-schema": ["../../packages/graphql-schema/src/index.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "exclude": ["node_modules", "dist", ".expo", "android", "ios"]
+}

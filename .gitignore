@@ -68,7 +68,7 @@ web_modules/
 # dotenv environment variable files
 .env
 .env.*
-!.env.example
+**/.env.*
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -137,3 +137,26 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Turbo
+.turbo/
+
+# pnpm tmp probes (sandbox artefacts)
+_tmp_*
+
+# Sprint 1 scaffold helper scripts (one-shot tooling)
+_sprint-1-scaffold/
+
+# Local env files (templates committed; .local stays out)
+.env
+.env.*.local
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Mimir — local-only planning artefacts (DO NOT COMMIT YET)
+# These hold the unpublished execution plan, stories, ADRs, skills, milestones
+# and Claude session instructions. Tracked locally only until we are ready to
+# share. Remove this block (and `git add -f`) when you want to push these.
+# ──────────────────────────────────────────────────────────────────────────────
+docs/
+CLAUDE.md
+.DS_Store

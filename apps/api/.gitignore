@@ -1,0 +1,21 @@
+# NestJS / Node
+dist/
+node_modules/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+
+# Env
+.env*.local
+.env
+
+# Turbo
+.turbo/
+
+# Prisma generated
+src/generated/
