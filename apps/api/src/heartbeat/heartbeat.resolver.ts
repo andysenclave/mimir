@@ -5,9 +5,10 @@
 
 import { Inject, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Resolver, Subscription } from '@nestjs/graphql';
-import type { PubSub } from 'graphql-subscriptions';
 
 import { PUB_SUB } from '../pubsub/pubsub.module';
+
+import type { PubSub } from 'graphql-subscriptions';
 
 const HEARTBEAT_EVENT = 'serverHeartbeat';
 
@@ -36,7 +37,7 @@ export class HeartbeatResolver implements OnModuleInit, OnModuleDestroy {
     name: HEARTBEAT_EVENT,
     resolve: (payload: { serverHeartbeat: string }) => payload.serverHeartbeat,
   })
-  serverHeartbeat(): AsyncIterator<unknown> {
-    return this.pubSub.asyncIterator(HEARTBEAT_EVENT);
+  serverHeartbeat(): AsyncIterableIterator<unknown> {
+    return this.pubSub.asyncIterableIterator(HEARTBEAT_EVENT);
   }
 }

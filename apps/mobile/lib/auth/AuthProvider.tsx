@@ -1,7 +1,8 @@
 // MM-009 / ADR-0001 §2 — AuthProvider.
 // Wraps the entire app. Exposes useAuth() with the AuthAPI shape.
 // On mount: hydrate user from stored access token (if present).
-// signUp/signIn: call REST → store tokens → set user.
+// signUp/signIn: call REST → store tokens → set user → identify analytics.
+// signOut: revoke token + reset analytics + clear Sentry user.
 //
 // ┌────────────────────────────────────────────────────────────────────────────┐
 // │ TODO — SWAP TO @andysenclave/heimdal-rn (MM-S2-AUTH-SWAP, ADR-0001 §3).   │
@@ -16,11 +17,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import type { AuthUser } from '@mimir/shared';
-
 import { authApi } from './api';
 import { tokenStorage } from './storage';
+
 import type { AuthAPI, Attestations } from './types';
+import type { AuthUser } from '@mimir/shared';
+
+import { identifyUser, resetAnalytics } from '@/lib/analytics/init';
+import { setSentryUser } from '@/lib/sentry/init';
 
 const AuthContext = createContext<AuthAPI | null>(null);
 
@@ -30,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
   // Hydration: on mount, if we have an access token assume signed-in. Validation
   // happens on first authenticated GraphQL call (errorLink handles 401 cleanup).
-  // Proper hydration via /auth/me lands in MM-011 with the login screen.
+  // The (tabs) / (onboarding) layouts can refetch /me as needed once mounted.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -40,9 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
         setIsLoading(false);
         return;
       }
-      // MM-011 will fetch the real user via the `me` GraphQL query and replace
-      // this stub. For now we set a placeholder so isAuthenticated is true and
-      // route guards behave.
+      // MM-013 me query hydrates the real user. Until that runs, keep a
+      // placeholder so isAuthenticated is true and route guards behave.
       setUser({
         id: 'user_pending_me_query',
         email: '',
@@ -56,28 +59,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const res = await authApi.login(email, password);
-    await tokenStorage.setTokens(res.accessToken, res.refreshToken);
-    setUser(res.user);
+  const applyIdentity = useCallback((next: AuthUser) => {
+    setUser(next);
+    identifyUser(next.id);
+    setSentryUser(next.id);
   }, []);
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const res = await authApi.login(email, password);
+      await tokenStorage.setTokens(res.accessToken, res.refreshToken);
+      applyIdentity(res.user);
+    },
+    [applyIdentity],
+  );
 
   const signUp = useCallback(
     async (email: string, password: string, attestations: Attestations) => {
       const res = await authApi.signup(email, password, attestations);
       await tokenStorage.setTokens(res.accessToken, res.refreshToken);
-      setUser(res.user);
+      applyIdentity(res.user);
     },
-    [],
+    [applyIdentity],
   );
 
   const signInWithGoogle = useCallback(async () => {
-    // Wired in MM-011 alongside the OAuth UI; placeholder so the type is satisfied.
-    throw new Error('Google sign-in lands in MM-011');
+    throw new Error('Google sign-in lands in MM-S2-AUTH-SWAP');
   }, []);
 
   const signInWithApple = useCallback(async () => {
-    throw new Error('Apple sign-in lands in MM-011');
+    throw new Error('Apple sign-in lands in MM-S2-AUTH-SWAP');
   }, []);
 
   const signOut = useCallback(async () => {
@@ -92,6 +103,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     }
     await tokenStorage.clear();
     setUser(null);
+    resetAnalytics();
+    setSentryUser(null);
+  }, []);
+
+  const updateUser = useCallback((partial: Partial<AuthUser> & { id: string }) => {
+    setUser((current) => {
+      if (current === null) {
+        return {
+          id: partial.id,
+          email: partial.email ?? '',
+          displayName: partial.displayName ?? null,
+          onboardingDone: partial.onboardingDone ?? false,
+        };
+      }
+      return { ...current, ...partial };
+    });
   }, []);
 
   const value = useMemo<AuthAPI>(
@@ -104,8 +131,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       signInWithGoogle,
       signInWithApple,
       signOut,
+      updateUser,
     }),
-    [user, isLoading, signIn, signUp, signInWithGoogle, signInWithApple, signOut],
+    [user, isLoading, signIn, signUp, signInWithGoogle, signInWithApple, signOut, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

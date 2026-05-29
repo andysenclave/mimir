@@ -10,8 +10,8 @@ import {
   type NextLink,
   type Operation,
 } from '@apollo/client';
-import { onError } from '@apollo/client/link/error';
 import { setContext } from '@apollo/client/link/context';
+import { onError } from '@apollo/client/link/error';
 
 import { tokenStorage } from '../auth/storage';
 
@@ -37,12 +37,11 @@ export const errorLink: ApolloLink = onError(
           // surface the error to the AuthProvider via cache eviction.
           void tokenStorage.clear();
         }
-        // eslint-disable-next-line no-console
+
         if (__DEV__) console.warn(`[apollo] ${code}: ${err.message} @ ${operation.operationName}`);
       }
     }
     if (networkError && __DEV__) {
-      // eslint-disable-next-line no-console
       console.warn(`[apollo] network: ${networkError.message}`);
     }
     return retryOnce(operation, forward);

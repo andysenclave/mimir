@@ -25,12 +25,12 @@ Part of the [Thimple](https://thimple.in) ecosystem.
 
 Mimir is a mobile-first **paper trading platform** built around the rhythm of monthly salaried investing in India. Every user gets a virtual monthly budget (₹10K → ₹1L), trades real NSE prices in a simulated portfolio, and learns by doing — with AI-generated context on the stocks they're holding and bite-sized lessons on the concepts behind them.
 
-The North Star is **engaged practice that builds real intuition**, measured by paper trades per active user per month and the share of sessions that end with the user *also* finishing a lesson or quiz.
+The North Star is **engaged practice that builds real intuition**, measured by paper trades per active user per month and the share of sessions that end with the user _also_ finishing a lesson or quiz.
 
 ### What Mimir is not
 
 - ❌ A real broker. There are no real trades, no real money, no real losses or gains.
-- ❌ An investment advisor. The AI never says *buy* or *sell*; it explains and contextualises.
+- ❌ An investment advisor. The AI never says _buy_ or _sell_; it explains and contextualises.
 - ❌ A get-rich app. There are no leaderboards, no streak-or-die mechanics, no FOMO.
 
 Every screen that touches money carries the line: **"Educational simulation. Not investment advice."**
@@ -119,25 +119,25 @@ flowchart LR
 
 ## 🛠 Tech stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| 📱 Mobile runtime | **Expo SDK 52+** / React Native 0.76+ | New architecture (Fabric + TurboModules), OTA via EAS Update, single codebase iOS + Android, dev velocity. |
-| 🧭 Navigation | **Expo Router** (file-based, typed routes) | Convention over configuration; matches Next.js mental model; deep-linking out of the box. |
-| 🎨 Styling | **NativeWind v4** + **React Native Reusables** | Tailwind utility classes that compile to RN styles. RNR is RN's shadcn/ui — primitives we own and extend, not a black-box component lib. |
-| 📊 Charts | **Victory Native XL** | RN-first, 60fps on real devices, supports the chart vocabulary we need (line, candle, area, sparkline). |
-| 🌀 Animation | **Reanimated 3** + **Moti** | UI-thread animations; declarative timing API; what every modern RN app uses. |
-| ⚙️ Backend | **NestJS 11** | Opinionated module system, decorator-driven, tested at scale. |
-| 🛰️ API | **Apollo Server 4** (code-first) + **`graphql-ws`** subscriptions | Single source of truth schema (TypeScript decorators → SDL → mobile codegen). `graphql-ws` is the modern transport (`subscriptions-transport-ws` is deprecated). |
-| 🗄️ ORM | **Prisma 6** | Type-safe queries, migration history in git, predictable. `Decimal(18,4)` for money. |
-| 🐘 Database | **PostgreSQL 16** (Neon) | Production region: **ap-south-1 Mumbai** for [DPDP Act 2023](https://www.meity.gov.in/content/digital-personal-data-protection-act-2023) compliance. Neon for branching + PITR. |
-| ⚡ Cache + queues + pub/sub | **Redis 7** (Upstash) | One Redis for caching (resolver-level TTLs), BullMQ workers (market poll, AI pre-compute, notifications), and pub/sub bridging the market poller → subscriptions. |
-| 🔐 Auth | **Heimdal IAM SDKs** — `@andysenclave/heimdal-rn` (mobile) & `@andysenclave/heimdal-nest` (backend) | Centralised identity for the Thimple ecosystem. ADR-0001 ships a local JWT fallback for Sprint 1; the SDK swap is queued as MM-S2-AUTH-SWAP. |
-| 🤖 AI | **Anthropic Haiku** (`@anthropic-ai/sdk`) | Stock insights (Phase 1), portfolio-aware suggestions (Phase 2). Hard guardrails: locked prompts in code, banned-word validators, audit log per call, hybrid pre-compute + on-demand. |
-| 🚀 CI / build | **GitHub Actions**, **TurboRepo**, **pnpm** | Cached dep install + cached task graph; minute-level CI on a small monorepo. |
-| 📦 Backend hosting | **Render** | Simple deploy hooks, automatic SSL via Let's Encrypt, decent free + paid tiers. |
-| 📲 Mobile delivery | **EAS Build** + **EAS Update** (`development` / `staging` / `production` channels) | Manual percentage rollouts on production, auto on staging. |
-| 🔍 Observability | **Sentry** (crashes + perf, both tiers) and **PostHog** (analytics + feature flags + session replay) | One vendor for errors, one for product analytics; PII-stripped. |
-| 🇮🇳 Localisation | Indian comma formatting (`₹1,23,456.78`) baked into a shared `formatINR()` util | Mono font on every numeric value to keep alignment clean. |
+| Layer                       | Choice                                                                                               | Why                                                                                                                                                                                   |
+| --------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 📱 Mobile runtime           | **Expo SDK 52+** / React Native 0.76+                                                                | New architecture (Fabric + TurboModules), OTA via EAS Update, single codebase iOS + Android, dev velocity.                                                                            |
+| 🧭 Navigation               | **Expo Router** (file-based, typed routes)                                                           | Convention over configuration; matches Next.js mental model; deep-linking out of the box.                                                                                             |
+| 🎨 Styling                  | **NativeWind v4** + **React Native Reusables**                                                       | Tailwind utility classes that compile to RN styles. RNR is RN's shadcn/ui — primitives we own and extend, not a black-box component lib.                                              |
+| 📊 Charts                   | **Victory Native XL**                                                                                | RN-first, 60fps on real devices, supports the chart vocabulary we need (line, candle, area, sparkline).                                                                               |
+| 🌀 Animation                | **Reanimated 3** + **Moti**                                                                          | UI-thread animations; declarative timing API; what every modern RN app uses.                                                                                                          |
+| ⚙️ Backend                  | **NestJS 11**                                                                                        | Opinionated module system, decorator-driven, tested at scale.                                                                                                                         |
+| 🛰️ API                      | **Apollo Server 4** (code-first) + **`graphql-ws`** subscriptions                                    | Single source of truth schema (TypeScript decorators → SDL → mobile codegen). `graphql-ws` is the modern transport (`subscriptions-transport-ws` is deprecated).                      |
+| 🗄️ ORM                      | **Prisma 6**                                                                                         | Type-safe queries, migration history in git, predictable. `Decimal(18,4)` for money.                                                                                                  |
+| 🐘 Database                 | **PostgreSQL 16** (Neon)                                                                             | Production region: **ap-south-1 Mumbai** for [DPDP Act 2023](https://www.meity.gov.in/content/digital-personal-data-protection-act-2023) compliance. Neon for branching + PITR.       |
+| ⚡ Cache + queues + pub/sub | **Redis 7** (Upstash)                                                                                | One Redis for caching (resolver-level TTLs), BullMQ workers (market poll, AI pre-compute, notifications), and pub/sub bridging the market poller → subscriptions.                     |
+| 🔐 Auth                     | **Heimdal IAM SDKs** — `@andysenclave/heimdal-rn` (mobile) & `@andysenclave/heimdal-nest` (backend)  | Centralised identity for the Thimple ecosystem. ADR-0001 ships a local JWT fallback for Sprint 1; the SDK swap is queued as MM-S2-AUTH-SWAP.                                          |
+| 🤖 AI                       | **Anthropic Haiku** (`@anthropic-ai/sdk`)                                                            | Stock insights (Phase 1), portfolio-aware suggestions (Phase 2). Hard guardrails: locked prompts in code, banned-word validators, audit log per call, hybrid pre-compute + on-demand. |
+| 🚀 CI / build               | **GitHub Actions**, **TurboRepo**, **pnpm**                                                          | Cached dep install + cached task graph; minute-level CI on a small monorepo.                                                                                                          |
+| 📦 Backend hosting          | **Render**                                                                                           | Simple deploy hooks, automatic SSL via Let's Encrypt, decent free + paid tiers.                                                                                                       |
+| 📲 Mobile delivery          | **EAS Build** + **EAS Update** (`development` / `staging` / `production` channels)                   | Manual percentage rollouts on production, auto on staging.                                                                                                                            |
+| 🔍 Observability            | **Sentry** (crashes + perf, both tiers) and **PostHog** (analytics + feature flags + session replay) | One vendor for errors, one for product analytics; PII-stripped.                                                                                                                       |
+| 🇮🇳 Localisation             | Indian comma formatting (`₹1,23,456.78`) baked into a shared `formatINR()` util                      | Mono font on every numeric value to keep alignment clean.                                                                                                                             |
 
 ---
 
@@ -192,15 +192,15 @@ mimir/
 
 ### Prerequisites
 
-| Tool | Version | Install |
-|---|---|---|
-| Node.js | **20+** | `nvm install 20 && nvm use 20` (this repo has a `.nvmrc`) |
-| pnpm | **9.15+** | `corepack enable && corepack prepare pnpm@9.15.0 --activate` |
-| Docker | latest | for local Postgres + Redis |
-| Git | 2.35+ | macOS comes with this; otherwise `brew install git` |
-| Watchman | latest (optional, recommended for RN) | `brew install watchman` |
-| Xcode + iOS Simulator | latest (Mac only) | from the Mac App Store |
-| Android Studio + emulator | latest (optional) | for Android development |
+| Tool                      | Version                               | Install                                                      |
+| ------------------------- | ------------------------------------- | ------------------------------------------------------------ |
+| Node.js                   | **20+**                               | `nvm install 20 && nvm use 20` (this repo has a `.nvmrc`)    |
+| pnpm                      | **9.15+**                             | `corepack enable && corepack prepare pnpm@9.15.0 --activate` |
+| Docker                    | latest                                | for local Postgres + Redis                                   |
+| Git                       | 2.35+                                 | macOS comes with this; otherwise `brew install git`          |
+| Watchman                  | latest (optional, recommended for RN) | `brew install watchman`                                      |
+| Xcode + iOS Simulator     | latest (Mac only)                     | from the Mac App Store                                       |
+| Android Studio + emulator | latest (optional)                     | for Android development                                      |
 
 ### First-time setup
 
@@ -233,14 +233,14 @@ pnpm dev    # turborepo runs api (:3000) and mobile (:8081 Metro) in parallel
 
 ### Verify the dev environment
 
-| Check | How |
-|---|---|
-| Backend up | `curl localhost:3000/health` → `{ status: "ok", db: "ok", redis: "ok", ... }` |
-| GraphQL playground | open `http://localhost:3000/graphql` |
-| `me` query works | run `query { me { id email displayName } }` in the playground |
-| Subscriptions work | run `subscription { serverHeartbeat }` — should tick every 5s |
-| Mobile boots | scan the Metro QR with **Expo Go** on your phone, or press `i` for iOS sim / `a` for Android |
-| Mobile ↔ API | the placeholder home screen renders a formatted `₹` value sourced from `@mimir/shared` |
+| Check              | How                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| Backend up         | `curl localhost:3000/health` → `{ status: "ok", db: "ok", redis: "ok", ... }`                |
+| GraphQL playground | open `http://localhost:3000/graphql`                                                         |
+| `me` query works   | run `query { me { id email displayName } }` in the playground                                |
+| Subscriptions work | run `subscription { serverHeartbeat }` — should tick every 5s                                |
+| Mobile boots       | scan the Metro QR with **Expo Go** on your phone, or press `i` for iOS sim / `a` for Android |
+| Mobile ↔ API       | the placeholder home screen renders a formatted `₹` value sourced from `@mimir/shared`       |
 
 ### When something breaks
 
@@ -299,7 +299,7 @@ apps/mobile/
 
 Three rules, no exceptions:
 
-1. **`components/ui/` is dumb.** Receives data + callbacks via props. No API calls, no global state, no side effects. NativeWind classes only. If a primitive needs to know *what* it's rendering, it doesn't belong here — it belongs in `features/`.
+1. **`components/ui/` is dumb.** Receives data + callbacks via props. No API calls, no global state, no side effects. NativeWind classes only. If a primitive needs to know _what_ it's rendering, it doesn't belong here — it belongs in `features/`.
 2. **`features/{name}/` is feature-scoped.** Owns its data fetching via codegen'd Apollo hooks, owns its types, composes `ui/` primitives. The portfolio feature does not import from the trading feature; they meet at the screen.
 3. **`app/` screens are thin** — under 150 lines. They wire feature hooks to feature components and handle nothing else. If a screen grows past that, the logic belongs in a hook.
 
@@ -330,12 +330,12 @@ Tokens live in `apps/mobile/theme/` and flow into `tailwind.config.ts` so Native
 
 ### Performance budget (Phase 1)
 
-| Surface | Budget | How we measure |
-|---|---|---|
-| Holdings list scroll | 60fps with 100 holdings | RN DevTools profiler on iPhone 14 |
-| Subscription tick → UI | < 1s end-to-end during market hours | manual timing + Sentry trace |
-| Order placement (P95) | < 500ms backend, < 1s mobile RTT | Sentry performance, PostHog event |
-| Cold start | < 2s on iPhone 14 | EAS build profiling |
+| Surface                | Budget                              | How we measure                    |
+| ---------------------- | ----------------------------------- | --------------------------------- |
+| Holdings list scroll   | 60fps with 100 holdings             | RN DevTools profiler on iPhone 14 |
+| Subscription tick → UI | < 1s end-to-end during market hours | manual timing + Sentry trace      |
+| Order placement (P95)  | < 500ms backend, < 1s mobile RTT    | Sentry performance, PostHog event |
+| Cold start             | < 2s on iPhone 14                   | EAS build profiling               |
 
 **FlashList** for any list > 20 items. **Reanimated 3 + Moti** for animations (no `Animated` API). **`expo-image`** for images. Subscription hooks set `skip` aggressively and unsubscribe on screen blur.
 
@@ -531,13 +531,13 @@ Plus `AIInsight`, `AIAuditLog`, `FeatureFlagCache`, and (during the ADR-0001 fal
 
 ## 🧪 Testing strategy
 
-| Layer | Tool | What we test |
-|---|---|---|
-| Backend services | Vitest / Jest, mocked Prisma | Business logic — happy path, edge cases, exception paths. Always tests for trading invariants. |
-| Backend resolvers | Jest + `Test.createTestingModule()` | Thin: verify the resolver calls the right service with the right args, response shape, guard applied. |
-| Backend integration | `supertest` against a real Apollo Server + test Postgres | Full request lifecycle: auth, validation, DB ops, response shape, GraphQL extension codes. |
-| Mobile components | Jest + React Native Testing Library | Critical flows only — login, order placement, onboarding completion, sign-out. |
-| Manual smoke (Phase 1) | Andy's iPhone, dev build | Once per sprint — every user-facing flow end to end on real hardware. |
+| Layer                  | Tool                                                     | What we test                                                                                          |
+| ---------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Backend services       | Vitest / Jest, mocked Prisma                             | Business logic — happy path, edge cases, exception paths. Always tests for trading invariants.        |
+| Backend resolvers      | Jest + `Test.createTestingModule()`                      | Thin: verify the resolver calls the right service with the right args, response shape, guard applied. |
+| Backend integration    | `supertest` against a real Apollo Server + test Postgres | Full request lifecycle: auth, validation, DB ops, response shape, GraphQL extension codes.            |
+| Mobile components      | Jest + React Native Testing Library                      | Critical flows only — login, order placement, onboarding completion, sign-out.                        |
+| Manual smoke (Phase 1) | Andy's iPhone, dev build                                 | Once per sprint — every user-facing flow end to end on real hardware.                                 |
 
 **What we always test:** trading service invariants, AI validation layer, notification dispatch guard (quiet hours, daily cap, transactional bypass), all DTOs / Zod schemas. **What we don't test:** the Prisma schema itself, NestJS framework internals, third-party libraries.
 
@@ -547,14 +547,14 @@ CI runs lint, typecheck, unit tests, integration tests (with PG + Redis service 
 
 ## 🌳 Branching & commits
 
-| Branch | Purpose | Auto-deploy |
-|---|---|---|
-| `master` | Production source of truth | Manual to prod after percentage-rollout flag flip |
-| `staging` | TestFlight / Play internal | Auto on push (Render staging + EAS Update staging channel) |
-| `develop` | Integration | CI gates only; no deploy |
-| `feature/MM-XXX-...` | Story branch | none |
-| `fix/MM-XXX-...` | Bug fix | none |
-| `chore/...` | Tooling / housekeeping | none |
+| Branch               | Purpose                    | Auto-deploy                                                |
+| -------------------- | -------------------------- | ---------------------------------------------------------- |
+| `master`             | Production source of truth | Manual to prod after percentage-rollout flag flip          |
+| `staging`            | TestFlight / Play internal | Auto on push (Render staging + EAS Update staging channel) |
+| `develop`            | Integration                | CI gates only; no deploy                                   |
+| `feature/MM-XXX-...` | Story branch               | none                                                       |
+| `fix/MM-XXX-...`     | Bug fix                    | none                                                       |
+| `chore/...`          | Tooling / housekeeping     | none                                                       |
 
 Promotion path: `feature/* → develop → staging → master`. **Never force-push** to `develop`, `staging`, or `master`. Squash-merge to keep history clean.
 
@@ -568,11 +568,11 @@ Promotion path: `feature/* → develop → staging → master`. **Never force-pu
 Refs: MM-XXX
 ```
 
-| Field | Allowed values |
-|---|---|
-| `type` | `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `style`, `ci`, `build`, `revert` |
-| `scope` | `mobile`, `api`, `shared`, `graphql`, `ai`, `notifications`, `trading`, `market`, `learning`, `auth`, `infra`, `ci`, `deps`, `release`, `monorepo` |
-| `subject` | lowercase, no period, ≤ 100 chars total header. Emojis welcome after the colon. |
+| Field     | Allowed values                                                                                                                                     |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`    | `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `style`, `ci`, `build`, `revert`                                                       |
+| `scope`   | `mobile`, `api`, `shared`, `graphql`, `ai`, `notifications`, `trading`, `market`, `learning`, `auth`, `infra`, `ci`, `deps`, `release`, `monorepo` |
+| `subject` | lowercase, no period, ≤ 100 chars total header. Emojis welcome after the colon.                                                                    |
 
 Husky's `pre-commit` runs `lint-staged` (Prettier + ESLint on touched files). Husky's `commit-msg` runs commitlint.
 
@@ -584,11 +584,11 @@ Every PR includes: a 1–3 sentence summary, the `MM-XXX` story reference, a bul
 
 ## 🚢 Deployment & environments
 
-| Env | Mobile | Backend | Database | Region |
-|---|---|---|---|---|
-| Local | `pnpm dev` (Metro) | `localhost:3000` | docker-compose Postgres | local |
-| Staging | EAS Update **staging** channel — auto on push to `staging` | `staging.api.mimir.thimple.in` (Render auto-deploy) | Neon **staging** branch | ap-south-1 (Mumbai) |
-| Production | EAS Update **production** channel — manual + percentage rollout via PostHog flag | `api.mimir.thimple.in` (Render manual deploy on push to `master`) | Neon **main** branch | ap-south-1 (Mumbai) |
+| Env        | Mobile                                                                           | Backend                                                           | Database                | Region              |
+| ---------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------- | ------------------- |
+| Local      | `pnpm dev` (Metro)                                                               | `localhost:3000`                                                  | docker-compose Postgres | local               |
+| Staging    | EAS Update **staging** channel — auto on push to `staging`                       | `staging.api.mimir.thimple.in` (Render auto-deploy)               | Neon **staging** branch | ap-south-1 (Mumbai) |
+| Production | EAS Update **production** channel — manual + percentage rollout via PostHog flag | `api.mimir.thimple.in` (Render manual deploy on push to `master`) | Neon **main** branch    | ap-south-1 (Mumbai) |
 
 OTA via EAS Update is **manual** on production: a bad OTA at 11 PM means waking up to broken phones with no on-call rotation. Staging is aggressive (auto-publish on push) precisely because the cost of a bad staging push is low.
 
@@ -600,7 +600,7 @@ OTA via EAS Update is **manual** on production: a bad OTA at 11 PM means waking 
 
 > **DPDP Act 2023.** All Mimir user data is localised to **ap-south-1 (Mumbai)**. Onboarding includes explicit consent. Account deletion cascades within 30 days.
 
-> **No SEBI-restricted language.** The product never uses *broker*, *investment advisor*, *guaranteed returns*, *recommended portfolio*. The AI never says *buy*, *sell*, *should*, *will reach*, or *expected to*.
+> **No SEBI-restricted language.** The product never uses _broker_, _investment advisor_, _guaranteed returns_, _recommended portfolio_. The AI never says _buy_, _sell_, _should_, _will reach_, or _expected to_.
 
 > **Age 18+ attestation** is required at signup.
 
@@ -614,19 +614,19 @@ OTA via EAS Update is **manual** on production: a bad OTA at 11 PM means waking 
 
 ## 📊 Project status & roadmap
 
-### Phase 1 — Trading core + Learn placeholder *(weeks 1–10)*
+### Phase 1 — Trading core + Learn placeholder _(weeks 1–10)_
 
-| Sprint | Theme | Status |
-|---|---|---|
+| Sprint   | Theme                                                                  | Status                                                                                   |
+| -------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | Sprint 1 | Foundation (monorepo, GraphQL, auth, schema, CI) — **MM-001 → MM-010** | ✅ Scaffold landed; UI screens (MM-011..015) and observability/deploy (MM-016..020) next |
-| Sprint 2 | Trading core + notifications live | ⏳ |
-| Sprint 3 | Learn tab + 3 courses | ⏳ |
-| Sprint 4 | AI suggestions + quizzes + polish | ⏳ |
-| Sprint 5 | Polish, beta, App Store launch | ⏳ |
+| Sprint 2 | Trading core + notifications live                                      | ⏳                                                                                       |
+| Sprint 3 | Learn tab + 3 courses                                                  | ⏳                                                                                       |
+| Sprint 4 | AI suggestions + quizzes + polish                                      | ⏳                                                                                       |
+| Sprint 5 | Polish, beta, App Store launch                                         | ⏳                                                                                       |
 
-### Phase 2 *(weeks 11–18)* — Full Learn experience, AI suggestions, educational notifications
+### Phase 2 _(weeks 11–18)_ — Full Learn experience, AI suggestions, educational notifications
 
-### Phase 3 *(weeks 19+)* — Sector deep-dives, mutual fund simulation, social features (controlled, not leaderboard-driven)
+### Phase 3 _(weeks 19+)_ — Sector deep-dives, mutual fund simulation, social features (controlled, not leaderboard-driven)
 
 ---
 
@@ -646,7 +646,7 @@ See [LICENSE](LICENSE).
 
 <div align="center">
 
-*Built solo by [Andy](https://andysenclave.dev) with [Claude](https://www.anthropic.com/claude) as engineering partner.*<br/>
-*Part of the [Thimple](https://thimple.in) ecosystem.*
+_Built solo by [Andy](https://andysenclave.dev) with [Claude](https://www.anthropic.com/claude) as engineering partner._<br/>
+_Part of the [Thimple](https://thimple.in) ecosystem._
 
 </div>

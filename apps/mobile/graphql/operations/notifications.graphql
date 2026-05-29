@@ -1,0 +1,7 @@
+mutation RegisterPushDevice($input: RegisterPushDeviceInput!) {
+  registerPushDevice(input: $input) {
+    id
+    platform
+    registeredAt
+  }
+}

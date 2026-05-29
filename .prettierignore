@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+.turbo
+.next
+.expo
+coverage
+**/generated
+**/generated.ts
+**/*.generated.ts
+pnpm-lock.yaml
+apps/api/prisma/migrations
+ios
+android

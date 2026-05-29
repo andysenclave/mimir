@@ -10,7 +10,7 @@ export type AuthUser = {
   email: string;
 };
 
-export const CurrentUser = createParamDecorator<unknown, ExecutionContext, AuthUser | null>(
+export const CurrentUser = createParamDecorator<unknown, AuthUser | null>(
   (_data, ctx: ExecutionContext): AuthUser | null => {
     const isGql = ctx.getType<'http' | 'graphql' | 'rpc' | 'ws'>() === 'graphql';
     const req = isGql

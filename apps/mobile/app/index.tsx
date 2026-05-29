@@ -1,33 +1,18 @@
-// Root index screen — placeholder for MM-002 acceptance criteria.
-// Replaced by:
-//   - MM-009: auth-gate redirects to /(tabs) or /login
-//   - MM-014: bottom-tab navigation under /(tabs)/
+// Splash route. Decides where to send the user based on auth + onboarding.
+// Per prompt 30: this is the only place that owns the post-load redirect logic.
 
-import { Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
+import { View } from 'react-native';
 
-import { formatINR, isMarketOpen } from '@mimir/shared';
+import { useAuth } from '@/lib/auth/AuthProvider';
 
-export default function Home(): React.JSX.Element {
-  // Sanity: import from @mimir/shared works at runtime.
-  const sample = formatINR(123456.78);
-  const marketOpen = isMarketOpen();
+export default function Index(): React.JSX.Element {
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-  return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        backgroundColor: '#0B0B12',
-        padding: 24,
-      }}
-    >
-      <Text style={{ color: '#E2E8F0', fontSize: 18 }}>Mimir — MM-002 scaffold</Text>
-      <Text style={{ color: '#94A3B8', fontSize: 14 }}>Sample formatted: {sample}</Text>
-      <Text style={{ color: '#94A3B8', fontSize: 14 }}>
-        NSE market: {marketOpen ? 'OPEN' : 'CLOSED'}
-      </Text>
-    </View>
-  );
+  if (isLoading) return <View className="flex-1 bg-bg-primary" />;
+  if (!isAuthenticated) return <Redirect href="/login" />;
+  if (user?.onboardingDone === false) return <Redirect href="/budget" />;
+  // MM-014 lands /(tabs)/portfolio. Until then, post-login stub absorbs the
+  // landing so the app doesn't 404 on first run.
+  return <Redirect href="/post-login" />;
 }
