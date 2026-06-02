@@ -5,10 +5,14 @@
 
 import 'reflect-metadata';
 
+import { TOP_100_NSE_SYMBOLS } from '@mimir/shared';
+import { getQueueToken } from '@nestjs/bullmq';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Queue } from 'bullmq';
 
 import { AppModule } from './app.module';
+import { MARKET_DATA_POLL_QUEUE } from './modules/market/processors/market-data-poller.processor';
 import { initSentryEarly } from './observability/sentry.bootstrap';
 
 async function bootstrap(): Promise<void> {
@@ -30,6 +34,18 @@ async function bootstrap(): Promise<void> {
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
+
+  // MM-021 — register cron schedulers for MarketDataPoller.
+  // upsertJobScheduler is idempotent: safe to re-run on every deploy.
+  // The processor's isMarketOpen() guard skips jobs outside NSE hours.
+  const marketQueue = app.get<Queue>(getQueueToken(MARKET_DATA_POLL_QUEUE));
+  await marketQueue.upsertJobScheduler(
+    'market-poll',
+    // 6-field BullMQ cron: every 15 seconds, Mon–Fri only.
+    // Off-hours jobs still fire but the processor returns early (isMarketOpen guard).
+    { pattern: '*/15 * * * * 1-5', tz: 'Asia/Kolkata' },
+    { name: 'poll', data: { symbols: [...TOP_100_NSE_SYMBOLS] } },
+  );
 
   console.info(`[mimir-api] listening on :${port}`);
 }
