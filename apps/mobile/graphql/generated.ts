@@ -166,6 +166,63 @@ export type UserDevice = {
   registeredAt: Scalars['String']['output'];
 };
 
+export type MarketOverviewQueryVariables = Exact<{ [key: string]: never }>;
+
+export type MarketOverviewQuery = {
+  __typename?: 'Query';
+  marketOverview: {
+    __typename?: 'MarketOverviewGql';
+    fetchedAt: string;
+    indices: Array<{
+      __typename?: 'IndexQuoteGql';
+      symbol: string;
+      name: string;
+      ltp: number;
+      change: number;
+      changePct: number;
+      fetchedAt: string;
+    }>;
+    topGainers: Array<{
+      __typename?: 'StockQuoteGql';
+      symbol: string;
+      name: string | null;
+      ltp: number;
+      change: number | null;
+      changePct: number | null;
+    }>;
+    topLosers: Array<{
+      __typename?: 'StockQuoteGql';
+      symbol: string;
+      name: string | null;
+      ltp: number;
+      change: number | null;
+      changePct: number | null;
+    }>;
+    sectors: Array<{
+      __typename?: 'SectorPerformanceGql';
+      name: string;
+      displayName: string;
+      changePct: number;
+    }>;
+  };
+};
+
+export type StockPriceUpdateSubscriptionVariables = Exact<{
+  symbols: Array<Scalars['String']['input']> | Scalars['String']['input'];
+}>;
+
+export type StockPriceUpdateSubscription = {
+  __typename?: 'Subscription';
+  stockPrice: {
+    __typename?: 'StockPriceUpdate';
+    symbol: string;
+    ltp: number;
+    change: number;
+    changePct: number;
+    fetchedAt: string;
+  };
+};
+
 export type MeQueryVariables = Exact<{ [key: string]: never }>;
 
 export type MeQuery = {
@@ -223,6 +280,150 @@ export type CompleteOnboardingMutation = {
   };
 };
 
+export const MarketOverviewDocument = gql`
+  query MarketOverview {
+    marketOverview {
+      fetchedAt
+      indices {
+        symbol
+        name
+        ltp
+        change
+        changePct
+        fetchedAt
+      }
+      topGainers {
+        symbol
+        name
+        ltp
+        change
+        changePct
+      }
+      topLosers {
+        symbol
+        name
+        ltp
+        change
+        changePct
+      }
+      sectors {
+        name
+        displayName
+        changePct
+      }
+    }
+  }
+`;
+
+/**
+ * __useMarketOverviewQuery__
+ *
+ * To run a query within a React component, call `useMarketOverviewQuery` and pass it any options that fit your needs.
+ * When your component renders, `useMarketOverviewQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useMarketOverviewQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useMarketOverviewQuery(
+  baseOptions?: Apollo.QueryHookOptions<MarketOverviewQuery, MarketOverviewQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<MarketOverviewQuery, MarketOverviewQueryVariables>(
+    MarketOverviewDocument,
+    options,
+  );
+}
+export function useMarketOverviewLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<MarketOverviewQuery, MarketOverviewQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<MarketOverviewQuery, MarketOverviewQueryVariables>(
+    MarketOverviewDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useMarketOverviewSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<MarketOverviewQuery, MarketOverviewQueryVariables>,
+): Apollo.UseSuspenseQueryResult<MarketOverviewQuery, MarketOverviewQueryVariables>;
+export function useMarketOverviewSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<MarketOverviewQuery, MarketOverviewQueryVariables>,
+): Apollo.UseSuspenseQueryResult<MarketOverviewQuery | undefined, MarketOverviewQueryVariables>;
+export function useMarketOverviewSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<MarketOverviewQuery, MarketOverviewQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<MarketOverviewQuery, MarketOverviewQueryVariables>(
+    MarketOverviewDocument,
+    options,
+  );
+}
+export type MarketOverviewQueryHookResult = ReturnType<typeof useMarketOverviewQuery>;
+export type MarketOverviewLazyQueryHookResult = ReturnType<typeof useMarketOverviewLazyQuery>;
+export type MarketOverviewSuspenseQueryHookResult = ReturnType<
+  typeof useMarketOverviewSuspenseQuery
+>;
+export type MarketOverviewQueryResult = Apollo.QueryResult<
+  MarketOverviewQuery,
+  MarketOverviewQueryVariables
+>;
+export const StockPriceUpdateDocument = gql`
+  subscription StockPriceUpdate($symbols: [String!]!) {
+    stockPrice(symbols: $symbols) {
+      symbol
+      ltp
+      change
+      changePct
+      fetchedAt
+    }
+  }
+`;
+
+/**
+ * __useStockPriceUpdateSubscription__
+ *
+ * To run a query within a React component, call `useStockPriceUpdateSubscription` and pass it any options that fit your needs.
+ * When your component renders, `useStockPriceUpdateSubscription` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the subscription, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useStockPriceUpdateSubscription({
+ *   variables: {
+ *      symbols: // value for 'symbols'
+ *   },
+ * });
+ */
+export function useStockPriceUpdateSubscription(
+  baseOptions: Apollo.SubscriptionHookOptions<
+    StockPriceUpdateSubscription,
+    StockPriceUpdateSubscriptionVariables
+  > &
+    ({ variables: StockPriceUpdateSubscriptionVariables; skip?: boolean } | { skip: boolean }),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useSubscription<
+    StockPriceUpdateSubscription,
+    StockPriceUpdateSubscriptionVariables
+  >(StockPriceUpdateDocument, options);
+}
+export type StockPriceUpdateSubscriptionHookResult = ReturnType<
+  typeof useStockPriceUpdateSubscription
+>;
+export type StockPriceUpdateSubscriptionResult =
+  Apollo.SubscriptionResult<StockPriceUpdateSubscription>;
 export const MeDocument = gql`
   query Me {
     me {

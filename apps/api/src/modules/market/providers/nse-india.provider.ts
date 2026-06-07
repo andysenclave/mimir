@@ -96,7 +96,14 @@ export class NseIndiaProvider extends MarketDataProvider {
     const topLosers: StockQuote[] = [];
 
     if (allIndicesData?.data) {
-      const sorted = [...allIndicesData.data].sort((a, b) => b.percChange - a.percChange);
+      // Filter out entries where indexName is null/undefined/empty — the NSE API
+      // occasionally returns incomplete rows that would violate StockQuoteGql.symbol: String!
+      const validRows = allIndicesData.data.filter(
+        (item): item is typeof item & { indexName: string } =>
+          typeof item.indexName === 'string' && item.indexName.length > 0,
+      );
+      const sorted = [...validRows].sort((a, b) => b.percChange - a.percChange);
+
       for (const item of sorted.slice(0, 5)) {
         topGainers.push({
           symbol: item.indexName,

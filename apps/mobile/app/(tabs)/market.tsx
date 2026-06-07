@@ -1,17 +1,39 @@
-// MM-014 placeholder — the real Market screen lands in MM-024 with the live
-// ticker, sector heatmap, and top movers.
+// MM-024 — Market Overview screen.
+// Prompt 30 (mobile-screen-scaffold): thin screen, wires hook → feature components.
+// Prompt 04 (when-component-is-a-page): under 150 lines, no business logic here.
+//
+// Data:  useMarketOverview() — query (15s poll) + subscription (live movers)
+// State: loading / error / data guards → delegates to MarketOverviewContent
 
-import { LineChart } from 'lucide-react-native';
-
-import { PlaceholderScreen } from '@/components/layout/PlaceholderScreen';
+import { ErrorState } from '@/components/layout/ErrorState';
+import { MarketOverviewContent, MarketOverviewSkeleton } from '@/features/market';
+import { useMarketOverview } from '@/features/market/hooks/useMarketOverview';
 
 export default function MarketTab(): React.JSX.Element {
+  const { overview, loading, error, refreshing, isOpen, onRefresh } = useMarketOverview();
+
+  // First load — no stale data available yet.
+  if (loading && overview === undefined) return <MarketOverviewSkeleton />;
+
+  // Network/GraphQL error with no cached data to fall back on.
+  if (error !== undefined && overview === undefined) {
+    return (
+      <ErrorState
+        message="Can't load market data right now. Check your connection."
+        onRetry={onRefresh}
+      />
+    );
+  }
+
+  // Stale data guard — protects against unexpected Apollo states.
+  if (overview === undefined) return <MarketOverviewSkeleton />;
+
   return (
-    <PlaceholderScreen
-      title="Market"
-      subtitle="NIFTY, SENSEX, sector heatmap, and live stock prices will live here."
-      icon={LineChart}
-      storyRef="MM-024"
+    <MarketOverviewContent
+      overview={overview}
+      isOpen={isOpen}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
     />
   );
 }

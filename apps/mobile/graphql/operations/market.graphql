@@ -1,0 +1,47 @@
+# MM-024 — Market Overview screen operations.
+# Prompt 21 (api-client-and-network-discipline): all network calls via Apollo + codegen.
+# Query drives initial load, pull-to-refresh, and 15s polling during market hours.
+# Subscription delivers live LTP ticks for top mover symbols, patched into the cache.
+
+query MarketOverview {
+  marketOverview {
+    fetchedAt
+    indices {
+      symbol
+      name
+      ltp
+      change
+      changePct
+      fetchedAt
+    }
+    topGainers {
+      symbol
+      name
+      ltp
+      change
+      changePct
+    }
+    topLosers {
+      symbol
+      name
+      ltp
+      change
+      changePct
+    }
+    sectors {
+      name
+      displayName
+      changePct
+    }
+  }
+}
+
+subscription StockPriceUpdate($symbols: [String!]!) {
+  stockPrice(symbols: $symbols) {
+    symbol
+    ltp
+    change
+    changePct
+    fetchedAt
+  }
+}
