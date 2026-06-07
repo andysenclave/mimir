@@ -1,17 +1,29 @@
-// Unit tests for MarketService — MM-021.
+// Unit tests for MarketService — MM-021 / MM-023.
+// MM-023: REDIS_PUBLISHER replaced by PUB_SUB (RedisPubSub); publish assertions updated.
 // Prompt 08 (how-to-unit-test-a-service.md): mock all deps, each test = one behaviour.
 
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
+import { PUB_SUB } from '../../../pubsub/pubsub.module';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { MarketService, REDIS_PUBLISHER, type RedisPublisher, type PollResult } from '../market.service';
-import { MarketDataProvider, type StockQuote } from '../providers/market-data-provider.interface';
+import { MarketService, STOCK_TICK_CHANNEL, type PollResult } from '../market.service';
+import { MarketDataProvider, type MarketOverview, type StockQuote } from '../providers/market-data-provider.interface';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeQuote(symbol: string, ltp: number): StockQuote {
   return { symbol, ltp, open: ltp, high: ltp, low: ltp, close: ltp, change: 0, changePct: 0, fetchedAt: new Date() };
+}
+
+function makeOverview(): MarketOverview {
+  return {
+    indices: [{ symbol: '^NSEI', name: 'NIFTY 50', ltp: 22000, change: 100, changePct: 0.45, fetchedAt: new Date() }],
+    topGainers: [makeQuote('RELIANCE', 2840)],
+    topLosers: [makeQuote('TCS', 3920)],
+    sectors: [{ name: 'NIFTY IT', displayName: 'IT', changePct: -0.5 }],
+    fetchedAt: new Date(),
+  };
 }
 
 /** Returns a Date that falls during NSE market hours (Mon–Fri, 10:00 IST). */
@@ -41,8 +53,8 @@ const mockProvider: jest.Mocked<MarketDataProvider> = {
   getIndexQuote: jest.fn(),
 };
 
-const mockRedis: jest.Mocked<RedisPublisher> = {
-  publish: jest.fn().mockResolvedValue(1),
+const mockPubSub = {
+  publish: jest.fn().mockResolvedValue(undefined),
 };
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
@@ -53,7 +65,6 @@ describe('MarketService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    // Suppress logger noise in test output.
     jest.spyOn(Logger.prototype, 'log').mockReturnValue(undefined);
     jest.spyOn(Logger.prototype, 'debug').mockReturnValue(undefined);
     jest.spyOn(Logger.prototype, 'warn').mockReturnValue(undefined);
@@ -63,7 +74,7 @@ describe('MarketService', () => {
         MarketService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: MarketDataProvider, useValue: mockProvider },
-        { provide: REDIS_PUBLISHER, useValue: mockRedis },
+        { provide: PUB_SUB, useValue: mockPubSub },
       ],
     }).compile();
 
@@ -78,7 +89,7 @@ describe('MarketService', () => {
 
       expect(result).toEqual<PollResult>({ published: 0, skipped: 0, failed: 0 });
       expect(mockProvider.getQuote).not.toHaveBeenCalled();
-      expect(mockRedis.publish).not.toHaveBeenCalled();
+      expect(mockPubSub.publish).not.toHaveBeenCalled();
       expect(mockPrisma.marketSnapshot.upsert).not.toHaveBeenCalled();
     });
   });
@@ -86,16 +97,16 @@ describe('MarketService', () => {
   // ─── Happy path ────────────────────────────────────────────────────────────
 
   describe('pollAndPublish — market open, fresh tick', () => {
-    it('publishes to Redis and upserts MarketSnapshot', async () => {
+    it('publishes to Redis PubSub and upserts MarketSnapshot', async () => {
       const quote = makeQuote('RELIANCE', 2840.50);
       mockProvider.getQuote.mockResolvedValueOnce(quote);
 
       const result = await service.pollAndPublish(['RELIANCE'], marketOpen());
 
       expect(result).toEqual<PollResult>({ published: 1, skipped: 0, failed: 0 });
-      expect(mockRedis.publish).toHaveBeenCalledWith(
-        'stock:RELIANCE',
-        expect.stringContaining('"symbol":"RELIANCE"'),
+      expect(mockPubSub.publish).toHaveBeenCalledWith(
+        STOCK_TICK_CHANNEL,
+        expect.objectContaining({ stockPrice: expect.objectContaining({ symbol: 'RELIANCE', ltp: 2840.50 }) }),
       );
       expect(mockPrisma.marketSnapshot.upsert).toHaveBeenCalledTimes(1);
       expect(mockPrisma.marketSnapshot.upsert).toHaveBeenCalledWith(
@@ -115,7 +126,7 @@ describe('MarketService', () => {
       const result = await service.pollAndPublish(['RELIANCE', 'TCS'], marketOpen());
 
       expect(result).toEqual<PollResult>({ published: 2, skipped: 0, failed: 0 });
-      expect(mockRedis.publish).toHaveBeenCalledTimes(2);
+      expect(mockPubSub.publish).toHaveBeenCalledTimes(2);
       expect(mockPrisma.marketSnapshot.upsert).toHaveBeenCalledTimes(2);
     });
   });
@@ -128,27 +139,26 @@ describe('MarketService', () => {
       const now = marketOpen();
       mockProvider.getQuote
         .mockResolvedValueOnce(makeQuote('RELIANCE', ltp))
-        .mockResolvedValueOnce(makeQuote('RELIANCE', ltp)); // identical
+        .mockResolvedValueOnce(makeQuote('RELIANCE', ltp));
 
       await service.pollAndPublish(['RELIANCE'], now);
-      const result = await service.pollAndPublish(['RELIANCE'], now); // same minute
+      const result = await service.pollAndPublish(['RELIANCE'], now);
 
       expect(result).toEqual<PollResult>({ published: 0, skipped: 1, failed: 0 });
-      // Redis published only on the first call.
-      expect(mockRedis.publish).toHaveBeenCalledTimes(1);
+      expect(mockPubSub.publish).toHaveBeenCalledTimes(1);
     });
 
     it('publishes again when LTP changes even within the same minute', async () => {
       const now = marketOpen();
       mockProvider.getQuote
         .mockResolvedValueOnce(makeQuote('RELIANCE', 2840))
-        .mockResolvedValueOnce(makeQuote('RELIANCE', 2845)); // different LTP
+        .mockResolvedValueOnce(makeQuote('RELIANCE', 2845));
 
       await service.pollAndPublish(['RELIANCE'], now);
       const result = await service.pollAndPublish(['RELIANCE'], now);
 
       expect(result).toEqual<PollResult>({ published: 1, skipped: 0, failed: 0 });
-      expect(mockRedis.publish).toHaveBeenCalledTimes(2);
+      expect(mockPubSub.publish).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -163,11 +173,10 @@ describe('MarketService', () => {
       const result = await service.pollAndPublish(['RELIANCE', 'TCS'], marketOpen());
 
       expect(result).toEqual<PollResult>({ published: 1, skipped: 0, failed: 1 });
-      // RELIANCE failed, TCS succeeded.
-      expect(mockRedis.publish).toHaveBeenCalledTimes(1);
-      expect(mockRedis.publish).toHaveBeenCalledWith(
-        'stock:TCS',
-        expect.stringContaining('"symbol":"TCS"'),
+      expect(mockPubSub.publish).toHaveBeenCalledTimes(1);
+      expect(mockPubSub.publish).toHaveBeenCalledWith(
+        STOCK_TICK_CHANNEL,
+        expect.objectContaining({ stockPrice: expect.objectContaining({ symbol: 'TCS' }) }),
       );
     });
 
@@ -177,7 +186,7 @@ describe('MarketService', () => {
       const result = await service.pollAndPublish(['RELIANCE', 'TCS'], marketOpen());
 
       expect(result).toEqual<PollResult>({ published: 0, skipped: 0, failed: 2 });
-      expect(mockRedis.publish).not.toHaveBeenCalled();
+      expect(mockPubSub.publish).not.toHaveBeenCalled();
       expect(mockPrisma.marketSnapshot.upsert).not.toHaveBeenCalled();
     });
   });
@@ -196,6 +205,44 @@ describe('MarketService', () => {
       mockPrisma.marketSnapshot.findUnique.mockResolvedValueOnce(snapshot);
       const result = await service.getSnapshot('RELIANCE');
       expect(result).toEqual(snapshot);
+    });
+  });
+
+  // ─── getMarketOverview ────────────────────────────────────────────────────
+
+  describe('getMarketOverview', () => {
+    it('fetches from provider on first call', async () => {
+      const overview = makeOverview();
+      mockProvider.getMarketOverview.mockResolvedValueOnce(overview);
+
+      const result = await service.getMarketOverview(marketOpen());
+
+      expect(result).toEqual(overview);
+      expect(mockProvider.getMarketOverview).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns cached data on second call within TTL', async () => {
+      const overview = makeOverview();
+      mockProvider.getMarketOverview.mockResolvedValue(overview);
+      const now = marketOpen();
+
+      await service.getMarketOverview(now);
+      await service.getMarketOverview(now);
+
+      expect(mockProvider.getMarketOverview).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-fetches after cache expires', async () => {
+      const overview = makeOverview();
+      mockProvider.getMarketOverview.mockResolvedValue(overview);
+      const now = marketOpen();
+      // First fetch
+      await service.getMarketOverview(now);
+      // Simulate time 31s ahead (past 30s TTL during market hours)
+      const later = new Date(now.getTime() + 31_000);
+      await service.getMarketOverview(later);
+
+      expect(mockProvider.getMarketOverview).toHaveBeenCalledTimes(2);
     });
   });
 });

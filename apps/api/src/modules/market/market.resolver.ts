@@ -1,0 +1,47 @@
+// MM-023 — GraphQL market queries + subscriptions.
+// Prompt 24 (resolver discipline): thin, one service call per field.
+// Prompt 25 (subscription discipline): filter by symbol, resolve from payload.
+
+import { Inject, UseGuards } from '@nestjs/common';
+import { Args, Query, Resolver, Subscription } from '@nestjs/graphql';
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
+
+import { LocalAuthGuard } from '../auth/auth.guard';
+import { PUB_SUB } from '../../pubsub/pubsub.module';
+
+import { MarketOverviewGql } from './entities/market-overview.entity';
+import { StockPriceUpdate } from './entities/stock-price-update.entity';
+import { StockQuoteGql } from './entities/stock-quote.entity';
+import { STOCK_TICK_CHANNEL } from './market.service';
+import { MarketService } from './market.service';
+
+@Resolver()
+@UseGuards(LocalAuthGuard)
+export class MarketResolver {
+  constructor(
+    private readonly marketService: MarketService,
+    @Inject(PUB_SUB) private readonly pubSub: RedisPubSub,
+  ) {}
+
+  @Query(() => MarketOverviewGql, { description: 'Current market overview: indices, sectors, top movers.' })
+  marketOverview(): Promise<MarketOverviewGql> {
+    return this.marketService.getMarketOverview();
+  }
+
+  @Query(() => StockQuoteGql, { nullable: true, description: 'Last-known snapshot for a single NSE symbol.' })
+  stock(@Args('symbol') symbol: string): Promise<StockQuoteGql | null> {
+    return this.marketService.getStockQuote(symbol);
+  }
+
+  @Subscription(() => StockPriceUpdate, {
+    description: 'Live LTP ticks for the requested symbols (15s cadence during market hours).',
+    filter: (payload: { stockPrice: StockPriceUpdate }, variables: { symbols: string[] }) =>
+      variables.symbols.includes(payload.stockPrice.symbol),
+    resolve: (payload: { stockPrice: StockPriceUpdate }) => payload.stockPrice,
+  })
+  stockPrice(
+    @Args({ name: 'symbols', type: () => [String] }) _symbols: string[],
+  ): AsyncIterableIterator<unknown> {
+    return this.pubSub.asyncIterableIterator(STOCK_TICK_CHANNEL);
+  }
+}
