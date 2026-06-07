@@ -37,6 +37,8 @@ const mockPrisma = {
 const mockProvider: jest.Mocked<MarketDataProvider> = {
   getQuote: jest.fn(),
   getQuotes: jest.fn(),
+  getMarketOverview: jest.fn(),
+  getIndexQuote: jest.fn(),
 };
 
 const mockRedis: jest.Mocked<RedisPublisher> = {
