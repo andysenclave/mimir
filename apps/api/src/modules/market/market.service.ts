@@ -5,13 +5,15 @@
 
 import { isMarketOpen } from '@mimir/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
-import { PUB_SUB } from '../../pubsub/pubsub.module';
+
 import { PrismaService } from '../../prisma/prisma.service';
+import { PUB_SUB } from '../../pubsub/pubsub.module';
 
-import { MarketDataProvider, type MarketOverview, type StockQuote } from './providers/market-data-provider.interface';
 import { StockQuoteGql } from './entities/stock-quote.entity';
+import { MarketDataProvider, type MarketOverview, type StockQuote } from './providers/market-data-provider.interface';
+
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 export interface PollResult {
   published: number;

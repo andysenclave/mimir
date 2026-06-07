@@ -4,16 +4,17 @@
 
 import { Inject, UseGuards } from '@nestjs/common';
 import { Args, Query, Resolver, Subscription } from '@nestjs/graphql';
-import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
-import { LocalAuthGuard } from '../auth/auth.guard';
+
 import { PUB_SUB } from '../../pubsub/pubsub.module';
+import { LocalAuthGuard } from '../auth/auth.guard';
 
 import { MarketOverviewGql } from './entities/market-overview.entity';
 import { StockPriceUpdate } from './entities/stock-price-update.entity';
 import { StockQuoteGql } from './entities/stock-quote.entity';
-import { STOCK_TICK_CHANNEL } from './market.service';
-import { MarketService } from './market.service';
+import { STOCK_TICK_CHANNEL , MarketService } from './market.service';
+
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 @Resolver()
 @UseGuards(LocalAuthGuard)

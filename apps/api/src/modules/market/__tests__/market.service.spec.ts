@@ -5,8 +5,8 @@
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-import { PUB_SUB } from '../../../pubsub/pubsub.module';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { PUB_SUB } from '../../../pubsub/pubsub.module';
 import { MarketService, STOCK_TICK_CHANNEL, type PollResult } from '../market.service';
 import { MarketDataProvider, type MarketOverview, type StockQuote } from '../providers/market-data-provider.interface';
 

@@ -1,18 +1,55 @@
-// TradingService — MM-025 stub.
-// Full trading domain (orders, budget) lands in MM-026. This stub provides
-// getPortfolioPerformance() for the Market Overview benchmark card.
+// TradingService — MM-026 + MM-027.
+//
+// Implements:
+//   • getPortfolioPerformance()  — MM-025 (benchmark comparison card)
+//   • placeOrder()               — MM-026 (9-step validation chain + atomic Prisma tx)
+//   • topupBudget()              — MM-027 (add virtual cash within tier ceiling)
+//   • runMonthlyRollover()       — MM-027 (called by BudgetRolloverProcessor cron)
+//
+// Private helpers (within service, not exported):
+//   • upsertHoldingOnBuy()       — VWAP avgBuyPrice update inside tx
+//   • adjustHoldingOnSell()      — partial / full sell + realized P&L inside tx
+//   • checkOrderRateLimit()      — Redis sliding-window, 60 orders/min/user
+//   • toOrderGql()               — Prisma → GraphQL entity projection
+//   • toBudgetGql()              — Prisma → GraphQL entity projection
+//
+// CLAUDE.md §8 invariants (always true):
+//   1. Order + Holding + MonthlyBudget mutate atomically (single Prisma tx).
+//   2. Each clientGeneratedOrderId → at most one Order row (idempotency).
+//   3. Holding.quantity can never go negative.
+//   4. MonthlyBudget.cashRemaining can never go negative.
+//   5. Holding.avgBuyPrice = VWAP of all BUYs (recomputed on BUY, untouched on SELL).
 //
 // Prompt 14 (service-method): Validate → Resolve → Execute → Return.
-// Prompt 29 (trading-domain-rules): holdings read-only here; mutations land in MM-026.
+// Prompt 29 (trading-domain-rules): locked validation chain order must not change.
 
-import { Injectable, Logger } from '@nestjs/common';
+import { placeOrderInputSchema } from '@mimir/shared';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
+import {
+  InsufficientBudgetException,
+  InsufficientHoldingException,
+  MarketQuoteUnavailableException,
+  NoBudgetException,
+  OrderRateLimitException,
+  TopUpExceedsTierMaxException,
+} from '../../common/exceptions/trading.exceptions';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MarketDataProvider } from '../market/providers/market-data-provider.interface';
 
+import { PlaceOrderInput } from './dto/place-order.input';
+import { TopupBudgetInput } from './dto/topup-budget.input';
+import { MonthlyBudgetGql } from './entities/monthly-budget.entity';
+import { OrderGql } from './entities/order.entity';
 import { PortfolioPerformanceGql } from './entities/portfolio-performance.entity';
 
-// ─── Copy templates ────────────────────────────────────────────────────────────
+import type { Redis } from 'ioredis';
+
+
+export const TRADING_REDIS = 'TRADING_REDIS';
+
+// ─── Copy templates (MM-025) ──────────────────────────────────────────────────
 // Template-based motivational copy. Never LLM-generated (CLAUDE.md §9 + §10).
 // SEBI-compliant: no buy/sell recommendations, no price predictions.
 
@@ -51,10 +88,23 @@ function selectCopy(opts: {
 export class TradingService {
   private readonly logger = new Logger(TradingService.name);
 
+  /** Sliding-window rate-limit constants */
+  private static readonly RATE_WINDOW_MS = 60_000;
+  private static readonly RATE_LIMIT = 60;
+
+  /** Slippage tolerance buffer applied to BUY cost estimate (2%) */
+  private static readonly SLIPPAGE_FACTOR = new Prisma.Decimal('1.02');
+
+  /** Budget rollover batch size (CLAUDE.md §8) */
+  private static readonly ROLLOVER_BATCH_SIZE = 500;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly marketProvider: MarketDataProvider,
+    @Inject(TRADING_REDIS) private readonly redis: Redis,
   ) {}
+
+  // ── MM-025 ────────────────────────────────────────────────────────────────
 
   /**
    * Compute the user's portfolio daily % change versus NIFTY 50 and S&P 500.
@@ -101,7 +151,6 @@ export class TradingService {
       for (const holding of holdings) {
         const quote = quoteMap.get(holding.symbol);
         if (!quote || quote.changePct === undefined || quote.changePct === null) continue;
-        // Use previous close as weight (invested value at yesterday's close).
         const prevClose = quote.close ?? quote.ltp;
         const weight = holding.quantity * prevClose;
         weightedChange += weight * quote.changePct;
@@ -121,4 +170,444 @@ export class TradingService {
 
     return { portfolioChangePct, niftyChangePct, sp500ChangePct, copy, hasHoldings };
   }
+
+  // ── MM-026 ────────────────────────────────────────────────────────────────
+
+  /**
+   * Place a simulated market order following the locked 9-step validation chain
+   * (CLAUDE.md §8). Atomicity invariant: Order + Holding + MonthlyBudget update
+   * inside a single Prisma transaction. Any failure rolls back all changes.
+   *
+   * Step 1: Idempotency — return existing order if correlationId already used.
+   * Step 2: Rate limit — ≤ 60 orders/min/user (Redis sliding window).
+   * Step 3: Symbol format — enforced by DTO @Matches; quote fetch confirms existence.
+   * Step 4: Quantity bounds — enforced by DTO @Min(1) @Max(1_000_000).
+   * Step 5: Active budget — user must have an ACTIVE MonthlyBudget.
+   * Step 6: Market quote — MarketDataProvider must return LTP.
+   * Step 7: Type-specific — BUY checks cash; SELL checks holding quantity.
+   * Step 8: Domain — Phase 1: MARKET orders only (type enforced by shared Zod schema).
+   * Step 9: Execute — atomic Prisma transaction.
+   */
+  async placeOrder(userId: string, input: PlaceOrderInput): Promise<OrderGql> {
+    // Runtime boundary: validate input against shared Zod schema.
+    // class-validator on the DTO already runs; this double-check catches any
+    // programmatic callers (e.g., tests) that bypass the GraphQL pipeline.
+    // Runtime boundary: re-validates through the shared Zod schema.
+    // class-validator on the DTO already runs for GraphQL callers; this catches
+    // programmatic callers (e.g., tests) that bypass the GraphQL pipeline.
+    placeOrderInputSchema.parse({
+      symbol: input.symbol,
+      type: input.type as 'BUY' | 'SELL',
+      quantity: input.quantity,
+      clientGeneratedOrderId: input.clientGeneratedOrderId,
+    });
+
+    // ── Step 1: Idempotency ────────────────────────────────────────────────────
+    const existing = await this.prisma.order.findUnique({
+      where: { correlationId: input.clientGeneratedOrderId },
+    });
+    if (existing) {
+      this.logger.log(`Idempotency hit — returning existing order ${existing.id}`, { userId });
+      return this.toOrderGql(existing);
+    }
+
+    // Shared context for all audit log entries in this attempt.
+    const auditCtx = {
+      userId,
+      symbol: input.symbol,
+      type: input.type,
+      quantity: input.quantity,
+      correlationId: input.clientGeneratedOrderId,
+    };
+
+    // ── Step 2: Rate limit ─────────────────────────────────────────────────────
+    try {
+      await this.checkOrderRateLimit(userId);
+    } catch (err) {
+      this.logger.warn('Order attempt rejected: rate limit exceeded', auditCtx);
+      throw err;
+    }
+
+    // ── Steps 3–4: Symbol format + quantity bounds already validated by DTO ────
+
+    // ── Step 5: Active budget ─────────────────────────────────────────────────
+    const budget = await this.prisma.monthlyBudget.findFirst({
+      where: { userId, status: 'ACTIVE' },
+    });
+    if (!budget) {
+      this.logger.warn('Order attempt rejected: no active budget', auditCtx);
+      throw new NoBudgetException(userId);
+    }
+
+    // ── Step 6: Market quote ──────────────────────────────────────────────────
+    let ltp: number;
+    try {
+      const quote = await this.marketProvider.getQuote(input.symbol);
+      ltp = quote.ltp;
+    } catch {
+      this.logger.warn('Order attempt rejected: market quote unavailable', auditCtx);
+      throw new MarketQuoteUnavailableException(input.symbol);
+    }
+
+    const ltpDecimal = new Prisma.Decimal(ltp.toString());
+    const quantityDecimal = new Prisma.Decimal(input.quantity.toString());
+    const orderValue = quantityDecimal.mul(ltpDecimal);
+
+    // ── Step 7: Type-specific validation ─────────────────────────────────────
+    if (input.type === 'BUY') {
+      // Required cash includes 2% slippage tolerance (CLAUDE.md §8).
+      const required = orderValue.mul(TradingService.SLIPPAGE_FACTOR);
+      if (budget.cashRemaining.lessThan(required)) {
+        this.logger.warn('Order attempt rejected: insufficient budget', {
+          ...auditCtx,
+          ltp,
+          cashRemaining: budget.cashRemaining.toNumber(),
+          required: required.toNumber(),
+        });
+        throw new InsufficientBudgetException(
+          budget.cashRemaining.toNumber(),
+          required.toNumber(),
+        );
+      }
+    } else {
+      // SELL — verify the user holds enough shares.
+      const holding = await this.prisma.holding.findUnique({
+        where: { userId_symbol: { userId, symbol: input.symbol } },
+      });
+      if (!holding || holding.quantity < input.quantity) {
+        this.logger.warn('Order attempt rejected: insufficient holding', {
+          ...auditCtx,
+          owned: holding?.quantity ?? 0,
+        });
+        throw new InsufficientHoldingException(
+          input.symbol,
+          input.quantity,
+          holding?.quantity ?? 0,
+        );
+      }
+    }
+
+    // ── Step 8: Domain rules ──────────────────────────────────────────────────
+    // Phase 1: MARKET orders only. Type validated by Zod (BUY | SELL).
+    // No partial fills. Each call is one complete fill (quantity = filled quantity).
+
+    // ── Step 9: Execute (atomic transaction) ──────────────────────────────────
+    const order = await this.prisma.$transaction(async (tx) => {
+      // Second idempotency check inside the transaction to handle concurrent
+      // requests that both passed the pre-transaction check.
+      const raceCheck = await tx.order.findUnique({
+        where: { correlationId: input.clientGeneratedOrderId },
+      });
+      if (raceCheck) return raceCheck;
+
+      if (input.type === 'BUY') {
+        const created = await tx.order.create({
+          data: {
+            userId,
+            budgetId: budget.id,
+            symbol: input.symbol,
+            type: 'BUY',
+            quantity: input.quantity,
+            priceAtExecution: ltpDecimal,
+            orderValue,
+            status: 'FILLED',
+            correlationId: input.clientGeneratedOrderId,
+          },
+        });
+
+        await this.upsertHoldingOnBuy(tx, userId, input.symbol, input.quantity, ltpDecimal);
+
+        await tx.monthlyBudget.update({
+          where: { id: budget.id },
+          data: { cashRemaining: { decrement: orderValue } },
+        });
+
+        return created;
+      } else {
+        // SELL — compute realized P&L before creating the order.
+        const holding = await tx.holding.findUniqueOrThrow({
+          where: { userId_symbol: { userId, symbol: input.symbol } },
+        });
+
+        // Realized P&L = (sellPrice − avgBuyPrice) × quantity
+        const realizedPnl = ltpDecimal.minus(holding.avgBuyPrice).mul(quantityDecimal);
+
+        const created = await tx.order.create({
+          data: {
+            userId,
+            budgetId: budget.id,
+            symbol: input.symbol,
+            type: 'SELL',
+            quantity: input.quantity,
+            priceAtExecution: ltpDecimal,
+            orderValue,
+            realizedPnl,
+            status: 'FILLED',
+            correlationId: input.clientGeneratedOrderId,
+          },
+        });
+
+        await this.adjustHoldingOnSell(tx, holding, input.quantity);
+
+        // Credit proceeds back to budget.
+        await tx.monthlyBudget.update({
+          where: { id: budget.id },
+          data: { cashRemaining: { increment: orderValue } },
+        });
+
+        return created;
+      }
+    });
+
+    this.logger.log(
+      `Order ${order.id} executed — ${order.type} ${order.quantity}× ${order.symbol} @ ₹${ltp}`,
+      { userId },
+    );
+
+    return this.toOrderGql(order);
+  }
+
+  // ── MM-027 — topupBudget ──────────────────────────────────────────────────
+
+  /**
+   * Add virtual cash to the user's current-month budget.
+   * Constraint: cashRemaining + amount cannot exceed budget.amount (tier ceiling).
+   */
+  async topupBudget(userId: string, input: TopupBudgetInput): Promise<MonthlyBudgetGql> {
+    const budget = await this.prisma.monthlyBudget.findFirst({
+      where: { userId, status: 'ACTIVE' },
+    });
+    if (!budget) throw new NoBudgetException(userId);
+
+    const topupDecimal = new Prisma.Decimal(input.amount.toString());
+    const projected = budget.cashRemaining.plus(topupDecimal);
+
+    if (projected.greaterThan(budget.amount)) {
+      const headroom = budget.amount.minus(budget.cashRemaining);
+      throw new TopUpExceedsTierMaxException(input.amount, headroom.toNumber());
+    }
+
+    const updated = await this.prisma.monthlyBudget.update({
+      where: { id: budget.id },
+      data: { cashRemaining: { increment: topupDecimal } },
+    });
+
+    this.logger.log(`Budget top-up ₹${input.amount} for budget ${budget.id}`, { userId });
+    return this.toBudgetGql(updated);
+  }
+
+  // ── MM-027 — monthly rollover (called by BudgetRolloverProcessor) ─────────
+
+  /**
+   * Rolls over all active budgets to a new cycle for the 1st of the month.
+   * Called by BudgetRolloverProcessor at 00:00 IST on the 1st of each month.
+   *
+   * For each user with an ACTIVE budget:
+   *   1. Mark existing budget EXPIRED (row preserved for audit history).
+   *   2. Create new ACTIVE budget at the same tier and initial amount.
+   * Holdings are never touched (CLAUDE.md §8 — never liquidate on rollover).
+   *
+   * Processes users in batches of 500 to avoid memory exhaustion.
+   */
+  async runMonthlyRollover(): Promise<{ processed: number; failed: number }> {
+    this.logger.log('Budget rollover starting');
+
+    const now = new Date();
+    const cycleStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const cycleEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+    let processed = 0;
+    let failed = 0;
+    let cursor: string | undefined;
+
+    for (;;) {
+      const batch = await this.prisma.monthlyBudget.findMany({
+        where: { status: 'ACTIVE' },
+        take: TradingService.ROLLOVER_BATCH_SIZE,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        orderBy: { id: 'asc' },
+        select: { id: true, userId: true, tier: true, amount: true },
+      });
+
+      if (batch.length === 0) break;
+
+      for (const budget of batch) {
+        try {
+          await this.prisma.$transaction([
+            // Mark old budget EXPIRED and zero cashRemaining (STORIES.md MM-027).
+            // Order history rows preserve the full spending audit trail.
+            this.prisma.monthlyBudget.update({
+              where: { id: budget.id },
+              data: { status: 'EXPIRED', cashRemaining: new Prisma.Decimal(0) },
+            }),
+            this.prisma.monthlyBudget.create({
+              data: {
+                userId: budget.userId,
+                tier: budget.tier,
+                amount: budget.amount,
+                cashRemaining: budget.amount,
+                status: 'ACTIVE',
+                cycleStart,
+                cycleEnd,
+              },
+            }),
+          ]);
+          processed++;
+        } catch (err: unknown) {
+          this.logger.error(`Rollover failed for budget ${budget.id}`, { err: String(err) });
+          failed++;
+        }
+      }
+
+      const lastItem = batch[batch.length - 1];
+      cursor = lastItem?.id;
+
+      if (batch.length < TradingService.ROLLOVER_BATCH_SIZE) break;
+    }
+
+    this.logger.log(`Budget rollover complete — processed: ${processed}, failed: ${failed}`);
+    return { processed, failed };
+  }
+
+  // ── Private helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Upsert a holding after a BUY.
+   * Invariant 5: avgBuyPrice = VWAP of all BUYs (recomputed on every BUY).
+   *
+   * Formula:
+   *   newAvg = (existingQty × existingAvg + N × P) / (existingQty + N)
+   */
+  private async upsertHoldingOnBuy(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    symbol: string,
+    qty: number,
+    price: Prisma.Decimal,
+  ): Promise<void> {
+    const existing = await tx.holding.findUnique({
+      where: { userId_symbol: { userId, symbol } },
+    });
+
+    const qtyDecimal = new Prisma.Decimal(qty.toString());
+
+    if (!existing) {
+      await tx.holding.create({
+        data: { userId, symbol, quantity: qty, avgBuyPrice: price },
+      });
+    } else {
+      const newQty = existing.quantity + qty;
+      // VWAP: (old_qty × old_avg + new_qty × price) / total_qty
+      const newAvg = new Prisma.Decimal(existing.quantity.toString())
+        .mul(existing.avgBuyPrice)
+        .plus(qtyDecimal.mul(price))
+        .div(new Prisma.Decimal(newQty.toString()));
+
+      await tx.holding.update({
+        where: { id: existing.id },
+        data: { quantity: newQty, avgBuyPrice: newAvg },
+      });
+    }
+  }
+
+  /**
+   * Adjust a holding after a SELL.
+   * If N === holding.quantity: delete the row (full exit).
+   * If N < holding.quantity: decrement quantity, avgBuyPrice unchanged (invariant 5).
+   * N > holding.quantity: guarded upstream in placeOrder — should never reach here.
+   */
+  private async adjustHoldingOnSell(
+    tx: Prisma.TransactionClient,
+    holding: { id: string; quantity: number },
+    sellQty: number,
+  ): Promise<void> {
+    if (sellQty === holding.quantity) {
+      await tx.holding.delete({ where: { id: holding.id } });
+    } else {
+      await tx.holding.update({
+        where: { id: holding.id },
+        data: { quantity: { decrement: sellQty } },
+        // avgBuyPrice intentionally untouched on partial sell (invariant 5).
+      });
+    }
+  }
+
+  /**
+   * Redis sliding-window rate limiter — 60 orders/min/user.
+   *
+   * Uses ZADD + ZREMRANGEBYSCORE + ZCARD in a pipeline.
+   * Each entry's score is the Unix timestamp in ms; the value is a unique member.
+   * Entries outside the 60s window are pruned on every check.
+   */
+  private async checkOrderRateLimit(userId: string): Promise<void> {
+    const key = `rate:orders:${userId}`;
+    const now = Date.now();
+    const windowStart = now - TradingService.RATE_WINDOW_MS;
+    // Unique member prevents collisions when two orders land in the same ms.
+    const member = `${now}:${Math.random().toString(36).slice(2)}`;
+
+    const pipeline = this.redis.pipeline();
+    pipeline.zremrangebyscore(key, '-inf', windowStart.toString());
+    pipeline.zadd(key, now, member);
+    pipeline.zcard(key);
+    pipeline.expire(key, 61);
+
+    const results = await pipeline.exec();
+    const count = (results?.[2]?.[1] as number | undefined) ?? 0;
+
+    if (count > TradingService.RATE_LIMIT) {
+      throw new OrderRateLimitException();
+    }
+  }
+
+  // ── Projections ───────────────────────────────────────────────────────────
+
+  private toOrderGql(order: {
+    id: string;
+    symbol: string;
+    type: string;
+    quantity: number;
+    priceAtExecution: Prisma.Decimal;
+    orderValue: Prisma.Decimal;
+    realizedPnl: Prisma.Decimal | null;
+    status: string;
+    failureReason: string | null;
+    correlationId: string;
+    executedAt: Date;
+  }): OrderGql {
+    return {
+      id: order.id,
+      symbol: order.symbol,
+      type: order.type,
+      quantity: order.quantity,
+      priceAtExecution: order.priceAtExecution.toNumber(),
+      orderValue: order.orderValue.toNumber(),
+      realizedPnl: order.realizedPnl?.toNumber() ?? null,
+      status: order.status,
+      failureReason: order.failureReason,
+      correlationId: order.correlationId,
+      executedAt: order.executedAt,
+    };
+  }
+
+  private toBudgetGql(budget: {
+    id: string;
+    tier: string;
+    amount: Prisma.Decimal;
+    cashRemaining: Prisma.Decimal;
+    status: string;
+    cycleStart: Date;
+    cycleEnd: Date;
+  }): MonthlyBudgetGql {
+    return {
+      id: budget.id,
+      tier: budget.tier,
+      amount: budget.amount.toNumber(),
+      cashRemaining: budget.cashRemaining.toNumber(),
+      status: budget.status,
+      cycleStart: budget.cycleStart,
+      cycleEnd: budget.cycleEnd,
+    };
+  }
+
 }
