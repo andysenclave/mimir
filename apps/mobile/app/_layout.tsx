@@ -9,6 +9,7 @@
 // Auth-aware redirects live in the route groups themselves ((auth)/_layout for
 // public, (tabs)/_layout for private).
 
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
 
@@ -38,8 +39,10 @@ export default function RootLayout(): React.JSX.Element {
       <SafeAreaProvider>
         <ApolloProvider client={apolloClient}>
           <AuthProvider>
-            <StatusBar style="light" />
-            <Slot />
+            <BottomSheetModalProvider>
+              <StatusBar style="light" />
+              <Slot />
+            </BottomSheetModalProvider>
           </AuthProvider>
         </ApolloProvider>
       </SafeAreaProvider>

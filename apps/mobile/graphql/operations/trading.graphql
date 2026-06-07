@@ -1,0 +1,35 @@
+# MM-028 — Invest screen operations.
+# StockDetail query drives the initial stock data load.
+# PlaceOrder mutation executes the trade.
+# StockPriceUpdate subscription reused from market.graphql for live price.
+
+query StockDetail($symbol: String!) {
+  stock(symbol: $symbol) {
+    symbol
+    name
+    ltp
+    change
+    changePct
+    open
+    high
+    low
+    close
+    volume
+    fetchedAt
+  }
+}
+
+mutation PlaceOrder($input: PlaceOrderInput!) {
+  placeOrder(input: $input) {
+    id
+    symbol
+    type
+    quantity
+    priceAtExecution
+    orderValue
+    realizedPnl
+    status
+    correlationId
+    executedAt
+  }
+}

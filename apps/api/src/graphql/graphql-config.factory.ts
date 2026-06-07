@@ -27,14 +27,18 @@ export function graphqlConfigFactory(): Omit<ApolloDriverConfig, 'driver'> {
     // depth + complexity wired below via plugin (added in MM-026)
     subscriptions: {
       'graphql-ws': {
-        // Auth validated once at WS handshake — see ADR-0001.
-        // The real verifier lands in MM-010 alongside JwtStrategy.
+        // Build a synthetic `req` object so LocalAuthGuard + @CurrentUser() work for WS.
+        // The JWT strategy reads req.headers.authorization; Passport validates it and
+        // sets req.user. This mirrors the HTTP request shape that the guard already
+        // understands (auth.guard.ts → getRequest → gqlCtx.req).
         onConnect: async (context: { connectionParams?: Record<string, unknown> }) => {
           const auth = context.connectionParams?.['Authorization'];
-          // For MM-006 scaffold we accept anonymous WS connections so the
-          // serverHeartbeat subscription works in playground without a token.
-          // From MM-010 onward, missing/invalid Authorization rejects the connection.
-          return { auth: typeof auth === 'string' ? auth : null };
+          const authStr = typeof auth === 'string' ? auth : '';
+          return {
+            req: {
+              headers: { authorization: authStr },
+            },
+          };
         },
       },
     },

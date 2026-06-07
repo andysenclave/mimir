@@ -36,18 +36,26 @@ import {
   TopUpExceedsTierMaxException,
 } from '../../common/exceptions/trading.exceptions';
 import { PrismaService } from '../../prisma/prisma.service';
+import { STOCK_TICK_CHANNEL } from '../market/market.service';
 import { MarketDataProvider } from '../market/providers/market-data-provider.interface';
+import { StockPriceUpdate } from '../market/entities/stock-price-update.entity';
 
 import { PlaceOrderInput } from './dto/place-order.input';
 import { TopupBudgetInput } from './dto/topup-budget.input';
 import { MonthlyBudgetGql } from './entities/monthly-budget.entity';
 import { OrderGql } from './entities/order.entity';
+import { PortfolioGql } from './entities/portfolio.entity';
+import { PortfolioHoldingGql } from './entities/portfolio-holding.entity';
 import { PortfolioPerformanceGql } from './entities/portfolio-performance.entity';
+import { PortfolioUpdateGql } from './entities/portfolio-update.entity';
+import { EquityPointGql } from './entities/equity-point.entity';
 
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 import type { Redis } from 'ioredis';
 
 
 export const TRADING_REDIS = 'TRADING_REDIS';
+export const TRADING_PUB_SUB = 'TRADING_PUB_SUB';
 
 // ─── Copy templates (MM-025) ──────────────────────────────────────────────────
 // Template-based motivational copy. Never LLM-generated (CLAUDE.md §9 + §10).
@@ -102,6 +110,7 @@ export class TradingService {
     private readonly prisma: PrismaService,
     private readonly marketProvider: MarketDataProvider,
     @Inject(TRADING_REDIS) private readonly redis: Redis,
+    @Inject(TRADING_PUB_SUB) private readonly pubSub: RedisPubSub,
   ) {}
 
   // ── MM-025 ────────────────────────────────────────────────────────────────
@@ -608,6 +617,220 @@ export class TradingService {
       cycleStart: budget.cycleStart,
       cycleEnd: budget.cycleEnd,
     };
+  }
+
+  // ── MM-030 — portfolio query ───────────────────────────────────────────────
+
+  async getPortfolio(userId: string): Promise<PortfolioGql> {
+    const [holdings, budget] = await Promise.all([
+      this.prisma.holding.findMany({ where: { userId } }),
+      this.prisma.monthlyBudget.findFirst({ where: { userId, status: 'ACTIVE' } }),
+    ]);
+
+    const symbols = holdings.map((h) => h.symbol);
+    const quotes =
+      symbols.length > 0
+        ? await this.marketProvider.getQuotes(symbols).catch(() => [])
+        : [];
+    const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
+
+    const holdingsGql = this.buildHoldingGqls(holdings, quoteMap);
+    const totalValue = holdingsGql.reduce((s, h) => s + h.totalValue, 0);
+    const totalInvested = holdingsGql.reduce((s, h) => s + h.quantity * h.avgBuyPrice, 0);
+    const totalPnl = totalValue - totalInvested;
+    const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+
+    const budgetGql = budget
+      ? this.toBudgetGql(budget)
+      : ({ id: '', tier: 'TIER_10K', amount: 0, cashRemaining: 0, status: 'ACTIVE', cycleStart: new Date(), cycleEnd: new Date() } as MonthlyBudgetGql);
+
+    const equityCurve = await this.computeEquityCurve(
+      userId,
+      budget?.amount.toNumber() ?? 0,
+      budget?.cashRemaining.toNumber() ?? 0,
+      quoteMap,
+    );
+
+    return { holdings: holdingsGql, budget: budgetGql, totalValue, totalInvested, totalPnl, totalPnlPct, equityCurve };
+  }
+
+  // ── MM-031 — portfolioUpdate subscription ────────────────────────────────
+
+  /**
+   * Returns an AsyncGenerator that yields a PortfolioUpdateGql payload for every
+   * relevant stock tick (throttled to 1Hz per user).
+   *
+   * Strategy: subscribe to the shared STOCK_TICK_CHANNEL. On each tick, check if
+   * the user holds that symbol. If so (and the throttle allows), recompute the
+   * full portfolio summary and yield it.
+   */
+  async *subscribeToPortfolioUpdates(userId: string): AsyncGenerator<{ portfolioUpdate: PortfolioUpdateGql }> {
+    const holdings = await this.prisma.holding.findMany({ where: { userId } });
+    const symbolSet = new Set(holdings.map((h) => h.symbol));
+
+    if (symbolSet.size === 0) return;
+
+    const iter = this.pubSub.asyncIterableIterator<{ stockPrice: StockPriceUpdate }>(STOCK_TICK_CHANNEL);
+    let lastEmitMs = 0;
+
+    for await (const payload of iter) {
+      const tick = payload.stockPrice;
+      if (!symbolSet.has(tick.symbol)) continue;
+
+      const nowMs = Date.now();
+      if (nowMs - lastEmitMs < 1_000) continue; // 1Hz throttle
+      lastEmitMs = nowMs;
+
+      const update = await this.computePortfolioUpdate(userId);
+      if (update) yield { portfolioUpdate: update };
+    }
+  }
+
+  // ── Private helpers (MM-030/031) ──────────────────────────────────────────
+
+  private buildHoldingGqls(
+    holdings: Array<{ symbol: string; quantity: number; avgBuyPrice: Prisma.Decimal }>,
+    quoteMap: Map<string, { ltp: number; name?: string | null }>,
+  ): PortfolioHoldingGql[] {
+    return holdings.map((h) => {
+      const quote = quoteMap.get(h.symbol);
+      const ltp = quote?.ltp ?? h.avgBuyPrice.toNumber();
+      const avgBuyPrice = h.avgBuyPrice.toNumber();
+      const totalValue = h.quantity * ltp;
+      const totalInvested = h.quantity * avgBuyPrice;
+      const unrealizedPnl = totalValue - totalInvested;
+      const unrealizedPnlPct = totalInvested > 0 ? (unrealizedPnl / totalInvested) * 100 : 0;
+      return {
+        symbol: h.symbol,
+        name: quote?.name ?? null,
+        quantity: h.quantity,
+        avgBuyPrice,
+        ltp,
+        unrealizedPnl,
+        unrealizedPnlPct,
+        totalValue,
+      };
+    });
+  }
+
+  private async computePortfolioUpdate(userId: string): Promise<PortfolioUpdateGql | null> {
+    const [holdings, budget] = await Promise.all([
+      this.prisma.holding.findMany({ where: { userId } }),
+      this.prisma.monthlyBudget.findFirst({ where: { userId, status: 'ACTIVE' } }),
+    ]);
+
+    if (!budget) return null;
+
+    const symbols = holdings.map((h) => h.symbol);
+    const quotes =
+      symbols.length > 0
+        ? await this.marketProvider.getQuotes(symbols).catch(() => [])
+        : [];
+    const quoteMap = new Map(quotes.map((q) => [q.symbol, q]));
+    const holdingsGql = this.buildHoldingGqls(holdings, quoteMap);
+
+    const totalValue = holdingsGql.reduce((s, h) => s + h.totalValue, 0);
+    const totalInvested = holdingsGql.reduce((s, h) => s + h.quantity * h.avgBuyPrice, 0);
+    const totalPnl = totalValue - totalInvested;
+    const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+
+    return {
+      totalValue,
+      totalInvested,
+      totalPnl,
+      totalPnlPct,
+      cashRemaining: budget.cashRemaining.toNumber(),
+      holdings: holdingsGql,
+    };
+  }
+
+  /**
+   * Computes an approximate 30-day equity curve using current LTPs as a proxy.
+   * Not historically accurate (no stored price snapshots) but shows trading activity.
+   * Phase 1 approximation — replace with real historical data in a future story.
+   */
+  private async computeEquityCurve(
+    userId: string,
+    budgetAmount: number,
+    currentCashRemaining: number,
+    quoteMap: Map<string, { ltp: number }>,
+  ): Promise<EquityPointGql[]> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 29);
+    thirtyDaysAgo.setUTCHours(0, 0, 0, 0);
+
+    const orders = await this.prisma.order.findMany({
+      where: { userId, status: 'FILLED', executedAt: { gte: thirtyDaysAgo } },
+      select: { symbol: true, type: true, quantity: true, orderValue: true, executedAt: true },
+      orderBy: { executedAt: 'asc' },
+    });
+
+    if (orders.length === 0) return [];
+
+    const DAY_MS = 24 * 60 * 60 * 1_000;
+    const now = new Date();
+    const points: EquityPointGql[] = [];
+
+    for (let i = 29; i >= 0; i--) {
+      const dayEnd = new Date(now.getTime() - i * DAY_MS);
+      dayEnd.setUTCHours(23, 59, 59, 999);
+      const dayStr = dayEnd.toISOString().slice(0, 10);
+
+      // Reconstruct holdings as of dayEnd
+      const holdingMap = new Map<string, { qty: number }>();
+      let netCashDeployed = 0;
+
+      for (const order of orders) {
+        if (order.executedAt > dayEnd) break;
+        const ov = order.orderValue.toNumber();
+        if (order.type === 'BUY') {
+          const existing = holdingMap.get(order.symbol) ?? { qty: 0 };
+          holdingMap.set(order.symbol, { qty: existing.qty + order.quantity });
+          netCashDeployed += ov;
+        } else {
+          const existing = holdingMap.get(order.symbol);
+          if (existing) {
+            const newQty = existing.qty - order.quantity;
+            if (newQty <= 0) holdingMap.delete(order.symbol);
+            else holdingMap.set(order.symbol, { qty: newQty });
+          }
+          netCashDeployed -= ov;
+        }
+      }
+
+      let holdingsValue = 0;
+      for (const [symbol, { qty }] of holdingMap) {
+        const ltp = quoteMap.get(symbol)?.ltp ?? 0;
+        holdingsValue += qty * ltp;
+      }
+
+      // Cash at that point (approximation: budget - net deployed)
+      const cashAtPoint = Math.max(0, budgetAmount - netCashDeployed);
+      points.push({ date: dayStr, value: holdingsValue + cashAtPoint });
+    }
+
+    // Ensure last point reflects current state
+    if (points.length > 0) {
+      const lastIdx = points.length - 1;
+      const holdingsNow = orders.reduce((map, order) => {
+        if (order.type === 'BUY') {
+          const ex = map.get(order.symbol) ?? 0;
+          map.set(order.symbol, ex + order.quantity);
+        } else {
+          const ex = map.get(order.symbol) ?? 0;
+          map.set(order.symbol, Math.max(0, ex - order.quantity));
+        }
+        return map;
+      }, new Map<string, number>());
+
+      let currentHoldingsValue = 0;
+      for (const [symbol, qty] of holdingsNow) {
+        if (qty > 0) currentHoldingsValue += qty * (quoteMap.get(symbol)?.ltp ?? 0);
+      }
+      points[lastIdx] = { ...points[lastIdx]!, value: currentHoldingsValue + currentCashRemaining };
+    }
+
+    return points;
   }
 
 }

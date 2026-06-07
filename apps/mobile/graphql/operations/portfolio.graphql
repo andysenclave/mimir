@@ -1,0 +1,53 @@
+# MM-030 — Portfolio screen operations.
+# Query drives initial load + pull-to-refresh.
+# Subscription delivers live P&L ticks, patched into the Apollo cache.
+
+query Portfolio {
+  portfolio {
+    holdings {
+      symbol
+      name
+      quantity
+      avgBuyPrice
+      ltp
+      unrealizedPnl
+      unrealizedPnlPct
+      totalValue
+    }
+    budget {
+      id
+      tier
+      amount
+      cashRemaining
+      status
+      cycleStart
+      cycleEnd
+    }
+    totalValue
+    totalInvested
+    totalPnl
+    totalPnlPct
+    equityCurve {
+      date
+      value
+    }
+  }
+}
+
+# MM-031 — real-time portfolio P&L subscription.
+subscription PortfolioUpdate {
+  portfolioUpdate {
+    totalValue
+    totalInvested
+    totalPnl
+    totalPnlPct
+    cashRemaining
+    holdings {
+      symbol
+      ltp
+      unrealizedPnl
+      unrealizedPnlPct
+      totalValue
+    }
+  }
+}

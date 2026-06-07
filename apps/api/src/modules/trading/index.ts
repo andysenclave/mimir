@@ -6,3 +6,7 @@ export { TradingModule } from './trading.module';
 export { PortfolioPerformanceGql } from './entities/portfolio-performance.entity';
 export { OrderGql } from './entities/order.entity';
 export { MonthlyBudgetGql } from './entities/monthly-budget.entity';
+export { PortfolioGql } from './entities/portfolio.entity';
+export { PortfolioHoldingGql } from './entities/portfolio-holding.entity';
+export { PortfolioUpdateGql } from './entities/portfolio-update.entity';
+export { EquityPointGql } from './entities/equity-point.entity';

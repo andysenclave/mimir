@@ -226,6 +226,9 @@ importers:
       '@expo/metro-runtime':
         specifier: ~6.1.2
         version: 6.1.2(expo@54.0.34)(react-dom@19.1.0(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      '@gorhom/bottom-sheet':
+        specifier: ^5.2.14
+        version: 5.2.14(@types/react@19.1.17)(react-native-gesture-handler@2.28.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-reanimated@4.1.7(react-native-worklets@0.5.1(@babel/core@7.29.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       '@hookform/resolvers':
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.75.0(react@19.1.0))
@@ -238,6 +241,9 @@ importers:
       '@sentry/react-native':
         specifier: ~7.2.0
         version: 7.2.0(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      '@shopify/flash-list':
+        specifier: ^2.3.1
+        version: 2.3.1(@babel/runtime@7.29.7)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -247,6 +253,9 @@ importers:
       expo-constants:
         specifier: ~18.0.13
         version: 18.0.13(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))
+      expo-crypto:
+        specifier: ^56.0.4
+        version: 56.0.4(expo@54.0.34)
       expo-linear-gradient:
         specifier: ~15.0.8
         version: 15.0.8(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -349,7 +358,7 @@ importers:
         version: 29.7.0(@types/node@20.19.40)(ts-node@10.9.2(@types/node@20.19.40)(typescript@5.9.3))
       jest-expo:
         specifier: ~54.0.17
-        version: 54.0.17(@babel/core@7.29.0)(expo@54.0.34)(jest@29.7.0(@types/node@20.19.40))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        version: 54.0.17(@babel/core@7.29.0)(expo@54.0.34)(jest@29.7.0(@types/node@20.19.40)(ts-node@10.9.2(@types/node@20.19.40)(typescript@5.9.3)))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.19(yaml@2.8.4)
@@ -1507,6 +1516,27 @@ packages:
 
   '@fastify/busboy@3.2.0':
     resolution: {integrity: sha512-m9FVDXU3GT2ITSe0UaMA5rU3QkfC/UXtCU8y0gSN/GugTqtVldOBWIB5V6V3sbmenVZUIpU6f+mPEO2+m5iTaA==}
+
+  '@gorhom/bottom-sheet@5.2.14':
+    resolution: {integrity: sha512-uLQFlDjp9z+jrOFcMSEldPqL5JdaXL3vXOh+juhwoNvXgTsEorJLjHTugXu+YccAG/0KJnShzKCrb71MHBsvJg==}
+    peerDependencies:
+      '@types/react': '*'
+      '@types/react-native': '*'
+      react: '*'
+      react-native: '*'
+      react-native-gesture-handler: '>=2.16.1'
+      react-native-reanimated: '>=3.16.0 || >=4.0.0-'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-native':
+        optional: true
+
+  '@gorhom/portal@1.0.14':
+    resolution: {integrity: sha512-MXyL4xvCjmgaORr/rtryDNFy3kU4qUbKlwtQqqsygd0xX3mhKjOLn6mQK8wfu0RkoE0pBE0nAasRoHua+/QZ7A==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   '@graphql-codegen/add@5.0.3':
     resolution: {integrity: sha512-SxXPmramkth8XtBlAHu4H4jYcYXM/o3p01+psU+0NADQowA8jtYkK6MW5rV6T+CxkEaNZItfSmZRPgIuypcqnA==}
@@ -3293,6 +3323,13 @@ packages:
   '@sentry/types@10.12.0':
     resolution: {integrity: sha512-sKGj3l3V8ZKISh2Tu88bHfnm5ztkRtSLdmpZ6TmCeJdSM9pV+RRd6CMJ0RnSEXmYHselPNUod521t2NQFd4W1w==}
     engines: {node: '>=18'}
+
+  '@shopify/flash-list@2.3.1':
+    resolution: {integrity: sha512-7oktg2NQR7KAODjFoDaWe8/OBzyYbdTE3zQTrUBMxjIbxHTHN7UXRX1hX3DHk8KvtkgQdRfZOV8Gjj2l4fGrXw==}
+    peerDependencies:
+      '@babel/runtime': '*'
+      react: '*'
+      react-native: '*'
 
   '@sinclair/typebox@0.27.10':
     resolution: {integrity: sha512-MTBk/3jGLNB2tVxv6uLlFh1iu64iYOQ2PbdOSK3NW8JZsmlaOh2q6sdtKowBhfw8QFLmYNzTW4/oK4uATIi6ZA==}
@@ -5318,6 +5355,11 @@ packages:
     peerDependencies:
       expo: '*'
       react-native: '*'
+
+  expo-crypto@56.0.4:
+    resolution: {integrity: sha512-fRNEhoXRXgAWBpe3/hq5X+KXTit3OZqdiAGts1YvNEUHQb+H5591mpPac0Yw+sZg9pXcrjRnzo5AxvZaENpc7g==}
+    peerDependencies:
+      expo: '*'
 
   expo-file-system@19.0.22:
     resolution: {integrity: sha512-l9pgahSc7sJD0bP9vBNeXvZjy8QKDpVHVxWmei/ESQOrzmoj5BidziqLVsyZdxsi+PfdbTtttLTAmddH/JafYA==}
@@ -11082,6 +11124,23 @@ snapshots:
 
   '@fastify/busboy@3.2.0': {}
 
+  '@gorhom/bottom-sheet@5.2.14(@types/react@19.1.17)(react-native-gesture-handler@2.28.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-reanimated@4.1.7(react-native-worklets@0.5.1(@babel/core@7.29.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@gorhom/portal': 1.0.14(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      invariant: 2.2.4
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
+      react-native-gesture-handler: 2.28.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      react-native-reanimated: 4.1.7(react-native-worklets@0.5.1(@babel/core@7.29.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+    optionalDependencies:
+      '@types/react': 19.1.17
+
+  '@gorhom/portal@1.0.14(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      nanoid: 3.3.12
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
+
   '@graphql-codegen/add@5.0.3(graphql@16.14.0)':
     dependencies:
       '@graphql-codegen/plugin-helpers': 5.1.1(graphql@16.14.0)
@@ -13353,6 +13412,12 @@ snapshots:
   '@sentry/types@10.12.0':
     dependencies:
       '@sentry/core': 10.12.0
+
+  '@shopify/flash-list@2.3.1(@babel/runtime@7.29.7)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@babel/runtime': 7.29.7
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
 
   '@sinclair/typebox@0.27.10': {}
 
@@ -15725,6 +15790,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  expo-crypto@56.0.4(expo@54.0.34):
+    dependencies:
+      expo: 54.0.34(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(expo-router@6.0.23)(graphql@16.14.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
+
   expo-file-system@19.0.22(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)):
     dependencies:
       expo: 54.0.34(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(expo-router@6.0.23)(graphql@16.14.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
@@ -17076,7 +17145,7 @@ snapshots:
       jest-mock: 29.7.0
       jest-util: 29.7.0
 
-  jest-expo@54.0.17(@babel/core@7.29.0)(expo@54.0.34)(jest@29.7.0(@types/node@20.19.40))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+  jest-expo@54.0.17(@babel/core@7.29.0)(expo@54.0.34)(jest@29.7.0(@types/node@20.19.40)(ts-node@10.9.2(@types/node@20.19.40)(typescript@5.9.3)))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       '@expo/config': 12.0.13
       '@expo/json-file': 10.0.14
@@ -17087,7 +17156,7 @@ snapshots:
       jest-environment-jsdom: 29.7.0
       jest-snapshot: 29.7.0
       jest-watch-select-projects: 2.0.0
-      jest-watch-typeahead: 2.2.1(jest@29.7.0(@types/node@20.19.40))
+      jest-watch-typeahead: 2.2.1(jest@29.7.0(@types/node@20.19.40)(ts-node@10.9.2(@types/node@20.19.40)(typescript@5.9.3)))
       json5: 2.2.3
       lodash: 4.18.1
       react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
@@ -17278,7 +17347,7 @@ snapshots:
       chalk: 3.0.0
       prompts: 2.4.2
 
-  jest-watch-typeahead@2.2.1(jest@29.7.0(@types/node@20.19.40)):
+  jest-watch-typeahead@2.2.1(jest@29.7.0(@types/node@20.19.40)(ts-node@10.9.2(@types/node@20.19.40)(typescript@5.9.3))):
     dependencies:
       ansi-escapes: 6.2.1
       chalk: 4.1.2

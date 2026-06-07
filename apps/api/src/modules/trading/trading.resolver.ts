@@ -1,10 +1,10 @@
-// TradingResolver — MM-026 + MM-027.
+// TradingResolver — MM-026 + MM-027 + MM-030 + MM-031.
 // Prompt 24 (resolver discipline): thin — guards, @CurrentUser(), one service call, return.
 // No business logic. No try/catch — global exception filter handles typed exceptions.
 // Prompt 29 (trading-domain-rules): resolver passes raw input to service; no pre-validation here.
 
 import { UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
 
 import { AuthUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { LocalAuthGuard } from '../auth/auth.guard';
@@ -13,7 +13,9 @@ import { PlaceOrderInput } from './dto/place-order.input';
 import { TopupBudgetInput } from './dto/topup-budget.input';
 import { MonthlyBudgetGql } from './entities/monthly-budget.entity';
 import { OrderGql } from './entities/order.entity';
+import { PortfolioGql } from './entities/portfolio.entity';
 import { PortfolioPerformanceGql } from './entities/portfolio-performance.entity';
+import { PortfolioUpdateGql } from './entities/portfolio-update.entity';
 import { TradingService } from './trading.service';
 
 @Resolver()
@@ -29,6 +31,16 @@ export class TradingResolver {
   })
   portfolioPerformance(@CurrentUser() user: AuthUser): Promise<PortfolioPerformanceGql> {
     return this.tradingService.getPortfolioPerformance(user.id);
+  }
+
+  // ── MM-030 ────────────────────────────────────────────────────────────────
+
+  @Query(() => PortfolioGql, {
+    description:
+      'Full portfolio snapshot: holdings with live P&L, active budget, aggregate metrics, and approximate 30-day equity curve.',
+  })
+  portfolio(@CurrentUser() user: AuthUser): Promise<PortfolioGql> {
+    return this.tradingService.getPortfolio(user.id);
   }
 
   // ── MM-026 ────────────────────────────────────────────────────────────────
@@ -58,5 +70,21 @@ export class TradingResolver {
     @Args('input') input: TopupBudgetInput,
   ): Promise<MonthlyBudgetGql> {
     return this.tradingService.topupBudget(user.id, input);
+  }
+
+  // ── MM-031 ────────────────────────────────────────────────────────────────
+
+  @Subscription(() => PortfolioUpdateGql, {
+    description:
+      'Real-time portfolio P&L updates as prices tick (max 1Hz per user). ' +
+      'Emits when any held symbol receives a price update. ' +
+      'Yields nothing if the user has no holdings.',
+    resolve: (payload: { portfolioUpdate: PortfolioUpdateGql }) => payload.portfolioUpdate,
+  })
+  portfolioUpdate(@CurrentUser() user: AuthUser | null): AsyncGenerator<{ portfolioUpdate: PortfolioUpdateGql }> {
+    if (!user) {
+      return (async function* () {})();
+    }
+    return this.tradingService.subscribeToPortfolioUpdates(user.id);
   }
 }

@@ -25,6 +25,14 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type EquityPoint {
+  """ISO date string (YYYY-MM-DD)."""
+  date: String!
+
+  """Portfolio value in INR at that date."""
+  value: Float!
+}
+
 type IndexQuoteGql {
   change: Float!
   changePct: Float!
@@ -157,6 +165,51 @@ input PlaceOrderInput {
   type: String!
 }
 
+"""Full portfolio snapshot for the Portfolio screen."""
+type Portfolio {
+  """Active monthly budget."""
+  budget: MonthlyBudget!
+
+  """
+  Approximate 30-day equity curve. Values use current LTP (not historical prices) as a proxy.
+  """
+  equityCurve: [EquityPoint!]!
+  holdings: [PortfolioHolding!]!
+
+  """Total cost basis (avgBuyPrice × qty) across all holdings."""
+  totalInvested: Float!
+
+  """Aggregate unrealized P&L in INR."""
+  totalPnl: Float!
+
+  """Aggregate unrealized P&L as % of totalInvested."""
+  totalPnlPct: Float!
+
+  """Total market value of all holdings."""
+  totalValue: Float!
+}
+
+"""A stock holding with live P&L metrics."""
+type PortfolioHolding {
+  """Volume-weighted average buy price."""
+  avgBuyPrice: Float!
+
+  """Last traded price."""
+  ltp: Float!
+  name: String
+  quantity: Int!
+  symbol: String!
+
+  """Current market value = quantity × LTP."""
+  totalValue: Float!
+
+  """Unrealized P&L in INR."""
+  unrealizedPnl: Float!
+
+  """Unrealized P&L as % of invested."""
+  unrealizedPnlPct: Float!
+}
+
 type PortfolioPerformanceGql {
   """Template-based motivational copy. Never LLM-generated (CLAUDE.md §9)."""
   copy: String!
@@ -178,12 +231,30 @@ type PortfolioPerformanceGql {
   sp500ChangePct: Float
 }
 
+"""Real-time portfolio P&L snapshot (1Hz max)."""
+type PortfolioUpdate {
+  """Cash remaining in the active budget."""
+  cashRemaining: Float!
+
+  """Updated per-holding metrics."""
+  holdings: [PortfolioHolding!]!
+  totalInvested: Float!
+  totalPnl: Float!
+  totalPnlPct: Float!
+  totalValue: Float!
+}
+
 type Query {
   """Current market overview: indices, sectors, top movers."""
   marketOverview: MarketOverviewGql!
 
   """The currently authenticated user. Requires a valid JWT."""
   me: AuthUser!
+
+  """
+  Full portfolio snapshot: holdings with live P&L, active budget, aggregate metrics, and approximate 30-day equity curve.
+  """
+  portfolio: Portfolio!
 
   """
   Daily portfolio return vs NIFTY 50 and S&P 500. Returns null portfolioChangePct when the user has no holdings.
@@ -233,6 +304,11 @@ type StockQuoteGql {
 }
 
 type Subscription {
+  """
+  Real-time portfolio P&L updates as prices tick (max 1Hz per user). Emits when any held symbol receives a price update. Yields nothing if the user has no holdings.
+  """
+  portfolioUpdate: PortfolioUpdate!
+
   """
   Server-driven heartbeat (MM-006 smoke test). Removed when MM-023 lands.
   """

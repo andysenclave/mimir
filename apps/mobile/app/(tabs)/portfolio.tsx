@@ -1,17 +1,38 @@
-// MM-014 placeholder — the real Portfolio screen lands in MM-030 with the
-// summary card, equity curve, holdings list, and pull-to-refresh.
+// MM-030 + MM-031 — Portfolio screen.
+// Prompt 30: thin screen wiring hook + feature components.
+// SheetProvider here so sell-from-portfolio flow has access to OrderConfirmationSheet.
 
-import { LayoutGrid } from 'lucide-react-native';
+import { SheetProvider } from '@/features/sheets/SheetProvider';
+import {
+  PortfolioContent,
+  PortfolioEmptyState,
+  PortfolioSkeleton,
+  usePortfolio,
+} from '@/features/portfolio';
+import { ErrorState } from '@/components/layout/ErrorState';
 
-import { PlaceholderScreen } from '@/components/layout/PlaceholderScreen';
+function PortfolioScreen(): React.JSX.Element {
+  const { portfolio, loading, error, refreshing, onRefresh } = usePortfolio();
+
+  if (loading && !portfolio) return <PortfolioSkeleton />;
+  if (error && !portfolio) {
+    return <ErrorState message="Couldn't load your portfolio." onRetry={onRefresh} />;
+  }
+  if (!portfolio?.holdings.length) return <PortfolioEmptyState />;
+
+  return (
+    <PortfolioContent
+      portfolio={portfolio}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+    />
+  );
+}
 
 export default function PortfolioTab(): React.JSX.Element {
   return (
-    <PlaceholderScreen
-      title="Portfolio"
-      subtitle="Your holdings, P&L, and equity curve will live here."
-      icon={LayoutGrid}
-      storyRef="MM-030"
-    />
+    <SheetProvider>
+      <PortfolioScreen />
+    </SheetProvider>
   );
 }

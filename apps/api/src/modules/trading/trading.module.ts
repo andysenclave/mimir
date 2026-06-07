@@ -8,22 +8,26 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 import { PrismaModule } from '../../prisma/prisma.module';
+import { PubSubModule, PUB_SUB } from '../../pubsub/pubsub.module';
 import { MarketModule } from '../market/market.module';
 
 import { BudgetRolloverProcessor, BUDGET_ROLLOVER_QUEUE } from './processors/budget-rollover.processor';
 import { TradingResolver } from './trading.resolver';
-import { TradingService, TRADING_REDIS } from './trading.service';
+import { TradingService, TRADING_REDIS, TRADING_PUB_SUB } from './trading.service';
 
 @Module({
   imports: [
     ConfigModule,
     PrismaModule,
+    PubSubModule,
     MarketModule,
-    // Register the budget-rollover queue. BullMQ.forRootAsync in AppModule provides
-    // the global Redis connection; registerQueue just registers the queue name.
     BullModule.registerQueue({ name: BUDGET_ROLLOVER_QUEUE }),
   ],
   providers: [
+    // ── PubSub alias (the shared PUB_SUB token re-exported under TRADING_PUB_SUB
+    //    so TradingService doesn't need to depend on the PUB_SUB string literal).
+    { provide: TRADING_PUB_SUB, useExisting: PUB_SUB },
+
     // ── ioredis client for rate limiting ──────────────────────────────────────
     // Separate from BullMQ's bundled ioredis so we can use pipeline() directly.
     // CLAUDE.md §17: Redis URL from ConfigService (validated at boot via Zod).
