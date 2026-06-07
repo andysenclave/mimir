@@ -74,12 +74,38 @@ type OnboardingResult {
   user: AuthUser!
 }
 
+type PortfolioPerformanceGql {
+  """Template-based motivational copy. Never LLM-generated (CLAUDE.md §9)."""
+  copy: String!
+
+  """
+  False when the user has no holdings — card renders benchmark-only mode.
+  """
+  hasHoldings: Boolean!
+
+  """NIFTY 50 daily % change."""
+  niftyChangePct: Float!
+
+  """
+  User's portfolio daily % change. Null when the user has no holdings or prices are unavailable.
+  """
+  portfolioChangePct: Float
+
+  """S&P 500 daily % change. Null when Yahoo Finance is unavailable."""
+  sp500ChangePct: Float
+}
+
 type Query {
   """Current market overview: indices, sectors, top movers."""
   marketOverview: MarketOverviewGql!
 
   """The currently authenticated user. Requires a valid JWT."""
   me: AuthUser!
+
+  """
+  Daily portfolio return vs NIFTY 50 and S&P 500. Returns null portfolioChangePct when the user has no holdings.
+  """
+  portfolioPerformance: PortfolioPerformanceGql!
 
   """Last-known snapshot for a single NSE symbol."""
   stock(symbol: String!): StockQuoteGql

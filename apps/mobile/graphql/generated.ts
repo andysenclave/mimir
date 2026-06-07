@@ -94,12 +94,28 @@ export type OnboardingResult = {
   user: AuthUser;
 };
 
+export type PortfolioPerformanceGql = {
+  __typename?: 'PortfolioPerformanceGql';
+  /** Template-based motivational copy. Never LLM-generated (CLAUDE.md §9). */
+  copy: Scalars['String']['output'];
+  /** False when the user has no holdings — card renders benchmark-only mode. */
+  hasHoldings: Scalars['Boolean']['output'];
+  /** NIFTY 50 daily % change. */
+  niftyChangePct: Scalars['Float']['output'];
+  /** User's portfolio daily % change. Null when the user has no holdings or prices are unavailable. */
+  portfolioChangePct: Maybe<Scalars['Float']['output']>;
+  /** S&P 500 daily % change. Null when Yahoo Finance is unavailable. */
+  sp500ChangePct: Maybe<Scalars['Float']['output']>;
+};
+
 export type Query = {
   __typename?: 'Query';
   /** Current market overview: indices, sectors, top movers. */
   marketOverview: MarketOverviewGql;
   /** The currently authenticated user. Requires a valid JWT. */
   me: AuthUser;
+  /** Daily portfolio return vs NIFTY 50 and S&P 500. Returns null portfolioChangePct when the user has no holdings. */
+  portfolioPerformance: PortfolioPerformanceGql;
   /** Last-known snapshot for a single NSE symbol. */
   stock: Maybe<StockQuoteGql>;
 };
@@ -277,6 +293,20 @@ export type CompleteOnboardingMutation = {
       cycleStart: string;
       cycleEnd: string;
     };
+  };
+};
+
+export type PortfolioPerformanceQueryVariables = Exact<{ [key: string]: never }>;
+
+export type PortfolioPerformanceQuery = {
+  __typename?: 'Query';
+  portfolioPerformance: {
+    __typename?: 'PortfolioPerformanceGql';
+    portfolioChangePct: number | null;
+    niftyChangePct: number;
+    sp500ChangePct: number | null;
+    copy: string;
+    hasHoldings: boolean;
   };
 };
 
@@ -623,4 +653,99 @@ export type CompleteOnboardingMutationResult = Apollo.MutationResult<CompleteOnb
 export type CompleteOnboardingMutationOptions = Apollo.BaseMutationOptions<
   CompleteOnboardingMutation,
   CompleteOnboardingMutationVariables
+>;
+export const PortfolioPerformanceDocument = gql`
+  query PortfolioPerformance {
+    portfolioPerformance {
+      portfolioChangePct
+      niftyChangePct
+      sp500ChangePct
+      copy
+      hasHoldings
+    }
+  }
+`;
+
+/**
+ * __usePortfolioPerformanceQuery__
+ *
+ * To run a query within a React component, call `usePortfolioPerformanceQuery` and pass it any options that fit your needs.
+ * When your component renders, `usePortfolioPerformanceQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = usePortfolioPerformanceQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function usePortfolioPerformanceQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    PortfolioPerformanceQuery,
+    PortfolioPerformanceQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<PortfolioPerformanceQuery, PortfolioPerformanceQueryVariables>(
+    PortfolioPerformanceDocument,
+    options,
+  );
+}
+export function usePortfolioPerformanceLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    PortfolioPerformanceQuery,
+    PortfolioPerformanceQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<PortfolioPerformanceQuery, PortfolioPerformanceQueryVariables>(
+    PortfolioPerformanceDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function usePortfolioPerformanceSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    PortfolioPerformanceQuery,
+    PortfolioPerformanceQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<PortfolioPerformanceQuery, PortfolioPerformanceQueryVariables>;
+export function usePortfolioPerformanceSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        PortfolioPerformanceQuery,
+        PortfolioPerformanceQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  PortfolioPerformanceQuery | undefined,
+  PortfolioPerformanceQueryVariables
+>;
+export function usePortfolioPerformanceSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        PortfolioPerformanceQuery,
+        PortfolioPerformanceQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<PortfolioPerformanceQuery, PortfolioPerformanceQueryVariables>(
+    PortfolioPerformanceDocument,
+    options,
+  );
+}
+export type PortfolioPerformanceQueryHookResult = ReturnType<typeof usePortfolioPerformanceQuery>;
+export type PortfolioPerformanceLazyQueryHookResult = ReturnType<
+  typeof usePortfolioPerformanceLazyQuery
+>;
+export type PortfolioPerformanceSuspenseQueryHookResult = ReturnType<
+  typeof usePortfolioPerformanceSuspenseQuery
+>;
+export type PortfolioPerformanceQueryResult = Apollo.QueryResult<
+  PortfolioPerformanceQuery,
+  PortfolioPerformanceQueryVariables
 >;

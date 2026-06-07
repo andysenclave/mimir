@@ -12,6 +12,7 @@ import { MeModule } from './me/me.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MarketModule } from './modules/market';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { TradingModule } from './modules/trading';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -66,6 +67,7 @@ import { PubSubModule } from './pubsub/pubsub.module';
     OnboardingModule,
     NotificationsModule, // MM-018 — registerPushDevice mutation
     MarketModule,        // MM-021 — MarketDataPoller + MarketSnapshot
+    TradingModule,       // MM-025 — portfolioPerformance query (orders + holdings in MM-026)
   ],
 })
 export class AppModule {}

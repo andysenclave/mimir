@@ -1,0 +1,11 @@
+# MM-025 — Portfolio vs benchmark comparison card on the Market Overview screen.
+
+query PortfolioPerformance {
+  portfolioPerformance {
+    portfolioChangePct
+    niftyChangePct
+    sp500ChangePct
+    copy
+    hasHoldings
+  }
+}

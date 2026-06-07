@@ -9,6 +9,7 @@ import type { MarketOverviewData } from './hooks/useMarketOverview';
 
 import { IndexTickerBar } from './IndexTickerBar';
 import { MarketClosedPill } from './MarketClosedPill';
+import { PerformanceBenchmarkCard } from './PerformanceBenchmarkCard';
 import { SectorHeatmap } from './SectorHeatmap';
 import { TopMoversList } from './TopMoversList';
 
@@ -54,8 +55,9 @@ export function MarketOverviewContent({
         {/* Top movers — top 5 gainers + top 5 losers */}
         <TopMoversList gainers={overview.topGainers} losers={overview.topLosers} />
 
-        {/* Performance vs benchmark — MM-025 */}
-        {/* Placeholder: implemented in the next story (MM-025). */}
+        {/* Performance vs benchmarks — MM-025 */}
+        <PerformanceBenchmarkCard />
+
         <View className="h-4" />
       </ScrollView>
     </ScreenContainer>
