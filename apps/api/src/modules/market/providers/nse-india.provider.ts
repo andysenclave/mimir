@@ -1,5 +1,13 @@
 // NseIndiaProvider — primary market data source using the unofficial NSE India API.
 // MM-022. Wrapped by FallbackMarketDataProvider — never injected directly.
+//
+// Performance note: getMarketOverview uses a SINGLE getAllIndices() call (≈700ms)
+// to derive indices + sectors + top movers. Previously made 13 concurrent
+// getEquityStockIndices() calls which triggered NSE rate-limiting and caused
+// the market tab to hang or error.
+//
+// getAllIndices() row shape: { index, indexSymbol, last, variation, percentChange, ... }
+// Note: field is `index` (not `indexName`) and `variation`/`percentChange` (not `change`/`percChange`).
 
 import { Injectable } from '@nestjs/common';
 import { NseIndia } from 'stock-nse-india';
@@ -12,22 +20,31 @@ import {
   type StockQuote,
 } from './market-data-provider.interface';
 
-// NSE sector indices → human display names.
+// Sector indices + display names used to pick rows out of getAllIndices().
 const NSE_SECTOR_MAP: ReadonlyArray<{ index: string; displayName: string }> = [
-  { index: 'NIFTY BANK', displayName: 'Banking' },
-  { index: 'NIFTY IT', displayName: 'IT' },
-  { index: 'NIFTY PHARMA', displayName: 'Pharma' },
-  { index: 'NIFTY AUTO', displayName: 'Auto' },
-  { index: 'NIFTY FMCG', displayName: 'FMCG' },
-  { index: 'NIFTY METAL', displayName: 'Metals' },
-  { index: 'NIFTY REALTY', displayName: 'Realty' },
-  { index: 'NIFTY ENERGY', displayName: 'Energy' },
-  { index: 'NIFTY INFRA', displayName: 'Infra' },
-  { index: 'NIFTY MEDIA', displayName: 'Media' },
+  { index: 'NIFTY BANK',   displayName: 'Banking' },
+  { index: 'NIFTY IT',     displayName: 'IT'      },
+  { index: 'NIFTY PHARMA', displayName: 'Pharma'  },
+  { index: 'NIFTY AUTO',   displayName: 'Auto'    },
+  { index: 'NIFTY FMCG',   displayName: 'FMCG'   },
+  { index: 'NIFTY METAL',  displayName: 'Metals'  },
+  { index: 'NIFTY REALTY', displayName: 'Realty'  },
+  { index: 'NIFTY ENERGY', displayName: 'Energy'  },
+  { index: 'NIFTY INFRA',  displayName: 'Infra'   },
+  { index: 'NIFTY MEDIA',  displayName: 'Media'   },
 ];
 
-// NSE indices for the ticker bar.
-const NSE_MAIN_INDICES = ['NIFTY 50', 'NIFTY BANK'];
+// Main indices shown in the ticker bar.
+const NSE_MAIN_INDICES = ['NIFTY 50', 'NIFTY BANK', 'SENSEX'];
+
+// Internal shape returned by getAllIndices().
+interface NseAllIndicesRow {
+  index?: string;
+  indexSymbol?: string;
+  last?: number;
+  variation?: number;
+  percentChange?: number;
+}
 
 @Injectable()
 export class NseIndiaProvider extends MarketDataProvider {
@@ -46,7 +63,6 @@ export class NseIndiaProvider extends MarketDataProvider {
       close: pd.previousClose,
       change: pd.change,
       changePct: pd.pChange,
-      // volume requires a separate getEquityTradeInfo() call — omitted for now, optional field
       fetchedAt: new Date(),
     };
   }
@@ -71,61 +87,60 @@ export class NseIndiaProvider extends MarketDataProvider {
     };
   }
 
+  /**
+   * Single-call overview: one getAllIndices() request (≈700ms) provides
+   * all data instead of 13 concurrent getEquityStockIndices() calls.
+   */
   async getMarketOverview(): Promise<MarketOverview> {
-    const [indicesResults, sectorResults, allIndicesData] = await Promise.all([
-      Promise.allSettled(NSE_MAIN_INDICES.map((i) => this.getIndexQuote(i))),
-      Promise.allSettled(NSE_SECTOR_MAP.map((s) => this.getIndexQuote(s.index))),
-      this.nse.getAllIndices().catch(() => null),
-    ]);
+    const allData = await this.nse.getAllIndices() as { data?: NseAllIndicesRow[] };
+    const rows = (allData?.data ?? []).filter(
+      (r): r is NseAllIndicesRow & { index: string } =>
+        typeof r.index === 'string' && r.index.length > 0,
+    );
 
-    const indices: IndexQuote[] = indicesResults
-      .filter((r): r is PromiseFulfilledResult<IndexQuote> => r.status === 'fulfilled')
-      .map((r) => r.value);
+    const rowByName = new Map(rows.map((r) => [r.index, r]));
+    const now = new Date();
 
-    const sectors: SectorPerformance[] = sectorResults
-      .map((r, i) => {
-        const entry = NSE_SECTOR_MAP[i];
-        if (!entry || r.status === 'rejected') return null;
-        const q = r.value;
-        return { name: entry.index, displayName: entry.displayName, changePct: q.changePct };
+    // ── Main indices (ticker bar) ────────────────────────────────────────────
+    const indices: IndexQuote[] = NSE_MAIN_INDICES
+      .map((name) => {
+        const r = rowByName.get(name);
+        if (!r) return null;
+        return {
+          symbol: name,
+          name,
+          ltp: r.last ?? 0,
+          change: r.variation ?? 0,
+          changePct: r.percentChange ?? 0,
+          fetchedAt: now,
+        };
+      })
+      .filter((q): q is IndexQuote => q !== null);
+
+    // ── Sectors ──────────────────────────────────────────────────────────────
+    const sectors: SectorPerformance[] = NSE_SECTOR_MAP
+      .map(({ index, displayName }) => {
+        const r = rowByName.get(index);
+        if (!r) return null;
+        return { name: index, displayName, changePct: r.percentChange ?? 0 };
       })
       .filter((s): s is SectorPerformance => s !== null);
 
-    // Top movers from all-indices advance/decline data if available, else empty.
-    const topGainers: StockQuote[] = [];
-    const topLosers: StockQuote[] = [];
+    // ── Top movers — sort all rows by percentChange ──────────────────────────
+    const sorted = [...rows].sort((a, b) => (b.percentChange ?? 0) - (a.percentChange ?? 0));
 
-    if (allIndicesData?.data) {
-      // Filter out entries where indexName is null/undefined/empty — the NSE API
-      // occasionally returns incomplete rows that would violate StockQuoteGql.symbol: String!
-      const validRows = allIndicesData.data.filter(
-        (item): item is typeof item & { indexName: string } =>
-          typeof item.indexName === 'string' && item.indexName.length > 0,
-      );
-      const sorted = [...validRows].sort((a, b) => b.percChange - a.percChange);
+    const toStockQuote = (r: NseAllIndicesRow & { index: string }): StockQuote => ({
+      symbol: r.index,
+      name: r.index,
+      ltp: r.last ?? 0,
+      change: r.variation ?? 0,
+      changePct: r.percentChange ?? 0,
+      fetchedAt: now,
+    });
 
-      for (const item of sorted.slice(0, 5)) {
-        topGainers.push({
-          symbol: item.indexName,
-          name: item.indexName,
-          ltp: item.last,
-          change: item.change,
-          changePct: item.percChange,
-          fetchedAt: new Date(),
-        });
-      }
-      for (const item of sorted.slice(-5).reverse()) {
-        topLosers.push({
-          symbol: item.indexName,
-          name: item.indexName,
-          ltp: item.last,
-          change: item.change,
-          changePct: item.percChange,
-          fetchedAt: new Date(),
-        });
-      }
-    }
+    const topGainers = sorted.slice(0, 5).map(toStockQuote);
+    const topLosers  = sorted.slice(-5).reverse().map(toStockQuote);
 
-    return { indices, topGainers, topLosers, sectors, fetchedAt: new Date() };
+    return { indices, topGainers, topLosers, sectors, fetchedAt: now };
   }
 }

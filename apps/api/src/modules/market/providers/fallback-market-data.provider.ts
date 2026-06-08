@@ -92,11 +92,21 @@ export class FallbackMarketDataProvider extends MarketDataProvider {
   }
 
   async getMarketOverview(): Promise<MarketOverview> {
-    return this.withFallback(
-      () => this.primary.getMarketOverview(),
-      () => this.fallback.getMarketOverview(),
-      'getMarketOverview',
-    );
+    // getMarketOverview is called directly by the resolver — if both providers
+    // fail we must not throw, or Apollo returns a GraphQL error and mobile shows
+    // the error state instead of stale data. Return an empty-but-valid overview
+    // so the UI degrades gracefully (MarketService also has an in-process TTL
+    // cache that will serve the last successful fetch on retry).
+    try {
+      return await this.withFallback(
+        () => this.primary.getMarketOverview(),
+        () => this.fallback.getMarketOverview(),
+        'getMarketOverview',
+      );
+    } catch (err) {
+      this.logger.error('Both market data providers failed for getMarketOverview — returning empty overview', { err: String(err) });
+      return { indices: [], topGainers: [], topLosers: [], sectors: [], fetchedAt: new Date() };
+    }
   }
 
   // ─── Circuit breaker core ─────────────────────────────────────────────────
@@ -117,7 +127,6 @@ export class FallbackMarketDataProvider extends MarketDataProvider {
           `Primary failed for ${label} (circuit: ${this.circuit.currentState}, failures: ${this.circuit['consecutiveFailures']})`,
           { err: String(err) },
         );
-        // Emit to PostHog via logger context — full telemetry wired in MM-023.
         // Fall through to fallback.
       }
     } else {
