@@ -9,6 +9,7 @@ import { Args, Query, Resolver, Subscription } from '@nestjs/graphql';
 import { PUB_SUB } from '../../pubsub/pubsub.module';
 import { LocalAuthGuard } from '../auth/auth.guard';
 
+import { IntradayPointGql } from './entities/intraday-point.entity';
 import { MarketOverviewGql } from './entities/market-overview.entity';
 import { StockPriceUpdate } from './entities/stock-price-update.entity';
 import { StockQuoteGql } from './entities/stock-quote.entity';
@@ -32,6 +33,11 @@ export class MarketResolver {
   @Query(() => StockQuoteGql, { nullable: true, description: 'Last-known snapshot for a single NSE symbol.' })
   stock(@Args('symbol') symbol: string): Promise<StockQuoteGql | null> {
     return this.marketService.getStockQuote(symbol);
+  }
+
+  @Query(() => [IntradayPointGql], { description: 'Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed.' })
+  stockIntraday(@Args('symbol') symbol: string): Promise<IntradayPointGql[]> {
+    return this.marketService.getStockIntraday(symbol);
   }
 
   @Subscription(() => StockPriceUpdate, {

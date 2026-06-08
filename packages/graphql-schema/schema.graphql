@@ -42,6 +42,14 @@ type IndexQuoteGql {
   symbol: String!
 }
 
+type IntradayPoint {
+  """Price in INR at this point."""
+  price: Float!
+
+  """Unix timestamp in milliseconds."""
+  timestamp: Float!
+}
+
 type MarketOverviewGql {
   fetchedAt: DateTime!
   indices: [IndexQuoteGql!]!
@@ -251,6 +259,9 @@ type Query {
   """The currently authenticated user. Requires a valid JWT."""
   me: AuthUser!
 
+  """Chronological trade history for the authenticated user, newest first."""
+  orderHistory(cursor: String, limit: Int! = 50): [Order!]!
+
   """
   Full portfolio snapshot: holdings with live P&L, active budget, aggregate metrics, and approximate 30-day equity curve.
   """
@@ -263,6 +274,11 @@ type Query {
 
   """Last-known snapshot for a single NSE symbol."""
   stock(symbol: String!): StockQuoteGql
+
+  """
+  Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed.
+  """
+  stockIntraday(symbol: String!): [IntradayPoint!]!
 }
 
 input RegisterPushDeviceInput {

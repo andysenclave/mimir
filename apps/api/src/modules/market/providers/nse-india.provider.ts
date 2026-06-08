@@ -15,6 +15,7 @@ import { NseIndia } from 'stock-nse-india';
 import {
   MarketDataProvider,
   type IndexQuote,
+  type IntradayPoint,
   type MarketOverview,
   type SectorPerformance,
   type StockQuote,
@@ -72,6 +73,37 @@ export class NseIndiaProvider extends MarketDataProvider {
     return results
       .filter((r): r is PromiseFulfilledResult<StockQuote> => r.status === 'fulfilled')
       .map((r) => r.value);
+  }
+
+  /**
+   * Intraday price series for a symbol.
+   * NSE returns normalised ratios in grapthData[i][1] (e.g. 0.98, 1.02).
+   * We multiply by the closePrice field to get absolute INR values.
+   * Returns [] when market is closed or data is unavailable.
+   */
+  async getIntradayData(symbol: string): Promise<IntradayPoint[]> {
+    const data = await this.nse.getEquityIntradayData(symbol) as {
+      grapthData?: [number, number, string][];
+      closePrice?: number;
+    };
+    const points = data?.grapthData;
+    const close = data?.closePrice ?? 1;
+    if (!points || points.length === 0) return [];
+
+    // The reference price is the last known LTP for absolute values.
+    // Fetch current LTP to scale correctly; fall back to closePrice.
+    let refPrice = close;
+    try {
+      const quote = await this.getQuote(symbol);
+      refPrice = quote.ltp > 0 ? quote.ltp : close;
+    } catch {
+      // keep refPrice = close
+    }
+
+    return points.map(([timestamp, ratio]) => ({
+      timestamp,
+      price: parseFloat((ratio * refPrice).toFixed(2)),
+    }));
   }
 
   async getIndexQuote(indexSymbol: string): Promise<IndexQuote> {

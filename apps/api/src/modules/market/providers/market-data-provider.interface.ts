@@ -39,9 +39,15 @@ export interface MarketOverview {
   fetchedAt: Date;
 }
 
+export interface IntradayPoint {
+  timestamp: number;  // Unix ms
+  price: number;      // INR
+}
+
 export abstract class MarketDataProvider {
   abstract getQuote(symbol: string): Promise<StockQuote>;
   abstract getQuotes(symbols: string[]): Promise<StockQuote[]>;
   abstract getMarketOverview(): Promise<MarketOverview>;
   abstract getIndexQuote(indexSymbol: string): Promise<IndexQuote>;
+  abstract getIntradayData(symbol: string): Promise<IntradayPoint[]>;
 }

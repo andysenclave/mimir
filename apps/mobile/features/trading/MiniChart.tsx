@@ -1,55 +1,47 @@
-// Mini intraday chart — simple SVG line using react-native-svg.
-// Victory Native XL planned for MM-033+ when historical data is available.
-// Renders placeholder gradient shape for now; data wired when intraday API lands.
+// MiniChart — MM-028 intraday line chart via Victory Native XL (D9, CartesianChart + Line).
+// Receives real intraday points from useStockIntradayQuery via useInvestScreen.
+// Falls back to "Intraday data unavailable" label when market is closed or API returns <2 pts.
 
-import { View } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import { View, Text } from 'react-native';
+import { CartesianChart, Line } from 'victory-native';
 import { tokens } from '@/theme/tokens';
 
 interface MiniChartProps {
-  /** Data points — if empty, renders a placeholder flat line */
-  points?: number[];
-  positive?: boolean;
-  height?: number;
+  points: Array<{ timestamp: number; price: number }>;
+  positive: boolean;
 }
 
-function buildPath(points: number[], width: number, height: number): string {
-  if (points.length < 2) return '';
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const range = max - min || 1;
-  const stepX = width / (points.length - 1);
-  const coords = points.map((p, i) => {
-    const x = i * stepX;
-    const y = height - ((p - min) / range) * height * 0.8 - height * 0.1;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  return `M ${coords.join(' L ')}`;
-}
+export function MiniChart({ points, positive }: MiniChartProps): React.JSX.Element {
+  const color = positive ? tokens.gain : tokens.loss;
 
-export function MiniChart({ points, positive = true, height = 80 }: MiniChartProps): React.JSX.Element {
-  const lineColor = positive ? tokens.gain : tokens.loss;
-  const placeholderPoints = [100, 102, 101, 103, 105, 104, 106];
-  const data = points && points.length >= 2 ? points : placeholderPoints;
+  if (points.length < 2) {
+    return (
+      <View className="mx-4 mb-4 h-20 items-center justify-center rounded-lg bg-surface-elevated">
+        <Text className="text-text-tertiary text-xs">Intraday data unavailable</Text>
+      </View>
+    );
+  }
+
+  // CartesianChart requires numeric x/y keys declared in xKey + yKeys
+  const data = points.map((p) => ({ x: p.timestamp, y: p.price }));
 
   return (
-    <View className="px-4" style={{ height }}>
-      <Svg width="100%" height={height} viewBox={`0 0 300 ${height}`} preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />
-            <Stop offset="100%" stopColor={lineColor} stopOpacity="0" />
-          </LinearGradient>
-        </Defs>
-        <Path
-          d={buildPath(data, 300, height)}
-          fill="none"
-          stroke={lineColor}
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </Svg>
+    <View className="mx-4 mb-4" style={{ height: 80 }}>
+      <CartesianChart
+        data={data}
+        xKey="x"
+        yKeys={['y']}
+        padding={{ left: 0, right: 0, top: 4, bottom: 4 }}
+      >
+        {({ points: chartPoints }) => (
+          <Line
+            points={chartPoints.y}
+            color={color}
+            strokeWidth={1.5}
+            animate={{ type: 'timing', duration: 300 }}
+          />
+        )}
+      </CartesianChart>
     </View>
   );
 }

@@ -9,18 +9,22 @@ import * as Crypto from 'expo-crypto';
 
 import {
   useStockDetailQuery,
+  useStockIntradayQuery,
   useStockPriceUpdateSubscription,
   usePlaceOrderMutation,
   type StockDetailQuery,
+  type StockIntradayQuery,
   type PortfolioQuery,
 } from '@/graphql/generated';
 import { isMarketOpen } from '@mimir/shared';
 
 export type StockData = NonNullable<StockDetailQuery['stock']>;
+export type IntradayPoint = NonNullable<StockIntradayQuery['stockIntraday']>[number];
 export type PortfolioHolding = NonNullable<PortfolioQuery['portfolio']>['holdings'][number];
 
 export interface UseInvestScreenResult {
   stock: StockData | null | undefined;
+  intradayPoints: IntradayPoint[];
   holding: PortfolioHolding | null | undefined;
   cashRemaining: number;
   loading: boolean;
@@ -45,6 +49,13 @@ export function useInvestScreen(
     variables: { symbol },
     fetchPolicy: 'cache-and-network',
     pollInterval: isOpen ? 15_000 : 0,
+  });
+
+  // MM-028 — intraday series for Victory Native XL MiniChart (1-day, ~5-min intervals).
+  // Fetched once per screen mount; no polling (intraday data changes slowly).
+  const { data: intradayData } = useStockIntradayQuery({
+    variables: { symbol },
+    fetchPolicy: 'cache-first',
   });
 
   // Patch the stock LTP in Apollo cache on each tick
@@ -102,6 +113,7 @@ export function useInvestScreen(
 
   return {
     stock: data?.stock,
+    intradayPoints: intradayData?.stockIntraday ?? [],
     holding,
     cashRemaining,
     loading,

@@ -6,6 +6,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   MarketDataProvider,
   type IndexQuote,
+  type IntradayPoint,
   type MarketOverview,
   type StockQuote,
 } from './market-data-provider.interface';
@@ -45,6 +46,17 @@ export class MockMarketDataProvider extends MarketDataProvider {
   async getIndexQuote(indexSymbol: string): Promise<IndexQuote> {
     this.logger.debug(`[mock] getIndexQuote ${indexSymbol}`);
     return { symbol: indexSymbol, name: indexSymbol, ltp: 22000, change: 100, changePct: 0.45, fetchedAt: new Date() };
+  }
+
+  async getIntradayData(symbol: string): Promise<IntradayPoint[]> {
+    this.logger.debug(`[mock] getIntradayData ${symbol}`);
+    const base = seedPrice(symbol);
+    const now = Date.now();
+    // 78 points = 9:15 to 15:30 at 5-min intervals
+    return Array.from({ length: 78 }, (_, i) => {
+      const jitter = (Math.random() - 0.5) * base * 0.005;
+      return { timestamp: now - (78 - i) * 5 * 60_000, price: parseFloat((base + jitter).toFixed(2)) };
+    });
   }
 
   async getMarketOverview(): Promise<MarketOverview> {

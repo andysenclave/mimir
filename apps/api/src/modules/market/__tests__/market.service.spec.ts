@@ -51,6 +51,7 @@ const mockProvider: jest.Mocked<MarketDataProvider> = {
   getQuotes: jest.fn(),
   getMarketOverview: jest.fn(),
   getIndexQuote: jest.fn(),
+    getIntradayData: jest.fn(),
 };
 
 const mockPubSub = {

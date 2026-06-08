@@ -58,6 +58,14 @@ export type IndexQuoteGql = {
   symbol: Scalars['String']['output'];
 };
 
+export type IntradayPoint = {
+  __typename?: 'IntradayPoint';
+  /** Price in INR at this point. */
+  price: Scalars['Float']['output'];
+  /** Unix timestamp in milliseconds. */
+  timestamp: Scalars['Float']['output'];
+};
+
 export type MarketOverviewGql = {
   __typename?: 'MarketOverviewGql';
   fetchedAt: Scalars['DateTime']['output'];
@@ -239,15 +247,28 @@ export type Query = {
   marketOverview: MarketOverviewGql;
   /** The currently authenticated user. Requires a valid JWT. */
   me: AuthUser;
+  /** Chronological trade history for the authenticated user, newest first. */
+  orderHistory: Array<Order>;
   /** Full portfolio snapshot: holdings with live P&L, active budget, aggregate metrics, and approximate 30-day equity curve. */
   portfolio: Portfolio;
   /** Daily portfolio return vs NIFTY 50 and S&P 500. Returns null portfolioChangePct when the user has no holdings. */
   portfolioPerformance: PortfolioPerformanceGql;
   /** Last-known snapshot for a single NSE symbol. */
   stock: Maybe<StockQuoteGql>;
+  /** Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed. */
+  stockIntraday: Array<IntradayPoint>;
+};
+
+export type QueryOrderHistoryArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: Scalars['Int']['input'];
 };
 
 export type QueryStockArgs = {
+  symbol: Scalars['String']['input'];
+};
+
+export type QueryStockIntradayArgs = {
   symbol: Scalars['String']['input'];
 };
 
@@ -522,6 +543,36 @@ export type StockDetailQuery = {
     volume: number | null;
     fetchedAt: string;
   } | null;
+};
+
+export type StockIntradayQueryVariables = Exact<{
+  symbol: Scalars['String']['input'];
+}>;
+
+export type StockIntradayQuery = {
+  __typename?: 'Query';
+  stockIntraday: Array<{ __typename?: 'IntradayPoint'; timestamp: number; price: number }>;
+};
+
+export type OrderHistoryQueryVariables = Exact<{
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  cursor?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+export type OrderHistoryQuery = {
+  __typename?: 'Query';
+  orderHistory: Array<{
+    __typename?: 'Order';
+    id: string;
+    symbol: string;
+    type: string;
+    quantity: number;
+    priceAtExecution: number;
+    orderValue: number;
+    realizedPnl: number | null;
+    status: string;
+    executedAt: string;
+  }>;
 };
 
 export type PlaceOrderMutationVariables = Exact<{
@@ -1198,6 +1249,157 @@ export type StockDetailSuspenseQueryHookResult = ReturnType<typeof useStockDetai
 export type StockDetailQueryResult = Apollo.QueryResult<
   StockDetailQuery,
   StockDetailQueryVariables
+>;
+export const StockIntradayDocument = gql`
+  query StockIntraday($symbol: String!) {
+    stockIntraday(symbol: $symbol) {
+      timestamp
+      price
+    }
+  }
+`;
+
+/**
+ * __useStockIntradayQuery__
+ *
+ * To run a query within a React component, call `useStockIntradayQuery` and pass it any options that fit your needs.
+ * When your component renders, `useStockIntradayQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useStockIntradayQuery({
+ *   variables: {
+ *      symbol: // value for 'symbol'
+ *   },
+ * });
+ */
+export function useStockIntradayQuery(
+  baseOptions: Apollo.QueryHookOptions<StockIntradayQuery, StockIntradayQueryVariables> &
+    ({ variables: StockIntradayQueryVariables; skip?: boolean } | { skip: boolean }),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<StockIntradayQuery, StockIntradayQueryVariables>(
+    StockIntradayDocument,
+    options,
+  );
+}
+export function useStockIntradayLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<StockIntradayQuery, StockIntradayQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<StockIntradayQuery, StockIntradayQueryVariables>(
+    StockIntradayDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useStockIntradaySuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<StockIntradayQuery, StockIntradayQueryVariables>,
+): Apollo.UseSuspenseQueryResult<StockIntradayQuery, StockIntradayQueryVariables>;
+export function useStockIntradaySuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<StockIntradayQuery, StockIntradayQueryVariables>,
+): Apollo.UseSuspenseQueryResult<StockIntradayQuery | undefined, StockIntradayQueryVariables>;
+export function useStockIntradaySuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<StockIntradayQuery, StockIntradayQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<StockIntradayQuery, StockIntradayQueryVariables>(
+    StockIntradayDocument,
+    options,
+  );
+}
+export type StockIntradayQueryHookResult = ReturnType<typeof useStockIntradayQuery>;
+export type StockIntradayLazyQueryHookResult = ReturnType<typeof useStockIntradayLazyQuery>;
+export type StockIntradaySuspenseQueryHookResult = ReturnType<typeof useStockIntradaySuspenseQuery>;
+export type StockIntradayQueryResult = Apollo.QueryResult<
+  StockIntradayQuery,
+  StockIntradayQueryVariables
+>;
+export const OrderHistoryDocument = gql`
+  query OrderHistory($limit: Int, $cursor: String) {
+    orderHistory(limit: $limit, cursor: $cursor) {
+      id
+      symbol
+      type
+      quantity
+      priceAtExecution
+      orderValue
+      realizedPnl
+      status
+      executedAt
+    }
+  }
+`;
+
+/**
+ * __useOrderHistoryQuery__
+ *
+ * To run a query within a React component, call `useOrderHistoryQuery` and pass it any options that fit your needs.
+ * When your component renders, `useOrderHistoryQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useOrderHistoryQuery({
+ *   variables: {
+ *      limit: // value for 'limit'
+ *      cursor: // value for 'cursor'
+ *   },
+ * });
+ */
+export function useOrderHistoryQuery(
+  baseOptions?: Apollo.QueryHookOptions<OrderHistoryQuery, OrderHistoryQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<OrderHistoryQuery, OrderHistoryQueryVariables>(
+    OrderHistoryDocument,
+    options,
+  );
+}
+export function useOrderHistoryLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<OrderHistoryQuery, OrderHistoryQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<OrderHistoryQuery, OrderHistoryQueryVariables>(
+    OrderHistoryDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useOrderHistorySuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<OrderHistoryQuery, OrderHistoryQueryVariables>,
+): Apollo.UseSuspenseQueryResult<OrderHistoryQuery, OrderHistoryQueryVariables>;
+export function useOrderHistorySuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<OrderHistoryQuery, OrderHistoryQueryVariables>,
+): Apollo.UseSuspenseQueryResult<OrderHistoryQuery | undefined, OrderHistoryQueryVariables>;
+export function useOrderHistorySuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<OrderHistoryQuery, OrderHistoryQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<OrderHistoryQuery, OrderHistoryQueryVariables>(
+    OrderHistoryDocument,
+    options,
+  );
+}
+export type OrderHistoryQueryHookResult = ReturnType<typeof useOrderHistoryQuery>;
+export type OrderHistoryLazyQueryHookResult = ReturnType<typeof useOrderHistoryLazyQuery>;
+export type OrderHistorySuspenseQueryHookResult = ReturnType<typeof useOrderHistorySuspenseQuery>;
+export type OrderHistoryQueryResult = Apollo.QueryResult<
+  OrderHistoryQuery,
+  OrderHistoryQueryVariables
 >;
 export const PlaceOrderDocument = gql`
   mutation PlaceOrder($input: PlaceOrderInput!) {

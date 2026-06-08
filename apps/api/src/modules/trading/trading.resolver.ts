@@ -11,6 +11,7 @@ import { LocalAuthGuard } from '../auth/auth.guard';
 
 import { PlaceOrderInput } from './dto/place-order.input';
 import { TopupBudgetInput } from './dto/topup-budget.input';
+import { Int } from '@nestjs/graphql';
 import { MonthlyBudgetGql } from './entities/monthly-budget.entity';
 import { OrderGql } from './entities/order.entity';
 import { PortfolioGql } from './entities/portfolio.entity';
@@ -41,6 +42,17 @@ export class TradingResolver {
   })
   portfolio(@CurrentUser() user: AuthUser): Promise<PortfolioGql> {
     return this.tradingService.getPortfolio(user.id);
+  }
+
+  // ── MM-030 history tab ────────────────────────────────────────────────────
+
+  @Query(() => [OrderGql], { description: 'Chronological trade history for the authenticated user, newest first.' })
+  orderHistory(
+    @CurrentUser() user: AuthUser,
+    @Args('limit', { type: () => Int, defaultValue: 50 }) limit: number,
+    @Args('cursor', { type: () => String, nullable: true }) cursor?: string,
+  ): Promise<OrderGql[]> {
+    return this.tradingService.getOrderHistory(user.id, limit, cursor);
   }
 
   // ── MM-026 ────────────────────────────────────────────────────────────────

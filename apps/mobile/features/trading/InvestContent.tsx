@@ -17,7 +17,7 @@ interface InvestContentProps {
 
 export function InvestContent({ result }: InvestContentProps): React.JSX.Element {
   const { openSheet } = useSheet();
-  const { stock, holding, cashRemaining, side, quantity, setSide, setQuantity, submitting, handleSubmit } = result;
+  const { stock, intradayPoints, holding, cashRemaining, side, quantity, setSide, setQuantity, submitting, handleSubmit } = result;
 
   function onFormSubmit(): void {
     if (!stock) return;
@@ -46,7 +46,10 @@ export function InvestContent({ result }: InvestContentProps): React.JSX.Element
           change={stock?.change}
           changePct={stock?.changePct}
         />
-        <MiniChart positive={(stock?.changePct ?? 0) >= 0} />
+        <MiniChart
+          points={intradayPoints}
+          positive={(stock?.changePct ?? 0) >= 0}
+        />
         <AIInsightCard />
         <OrderForm
           symbol={stock?.symbol ?? ''}

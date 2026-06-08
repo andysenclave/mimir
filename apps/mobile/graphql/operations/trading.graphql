@@ -19,6 +19,29 @@ query StockDetail($symbol: String!) {
   }
 }
 
+# MM-028 — intraday price series for MiniChart (Victory Native XL)
+query StockIntraday($symbol: String!) {
+  stockIntraday(symbol: $symbol) {
+    timestamp
+    price
+  }
+}
+
+# MM-030 history tab — chronological trade list
+query OrderHistory($limit: Int, $cursor: String) {
+  orderHistory(limit: $limit, cursor: $cursor) {
+    id
+    symbol
+    type
+    quantity
+    priceAtExecution
+    orderValue
+    realizedPnl
+    status
+    executedAt
+  }
+}
+
 mutation PlaceOrder($input: PlaceOrderInput!) {
   placeOrder(input: $input) {
     id

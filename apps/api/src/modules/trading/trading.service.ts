@@ -619,6 +619,30 @@ export class TradingService {
     };
   }
 
+  // ── MM-030 (history tab) — chronological trade list ──────────────────────
+
+  /**
+   * Returns up to `limit` orders for `userId`, newest first.
+   * Cursor-based pagination: pass the last order's `executedAt` ISO string
+   * as `cursor` for the next page.
+   */
+  async getOrderHistory(
+    userId: string,
+    limit = 50,
+    cursor?: string,
+  ): Promise<OrderGql[]> {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        userId,
+        status: 'FILLED',
+        ...(cursor ? { executedAt: { lt: new Date(cursor) } } : {}),
+      },
+      orderBy: { executedAt: 'desc' },
+      take: limit,
+    });
+    return orders.map((o) => this.toOrderGql(o));
+  }
+
   // ── MM-030 — portfolio query ───────────────────────────────────────────────
 
   async getPortfolio(userId: string): Promise<PortfolioGql> {

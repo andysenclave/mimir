@@ -2,8 +2,11 @@
 // Prompt 16: Apollo owns all server state.
 // Query: initial load + pull-to-refresh.
 // Subscription (MM-031): live P&L ticks — patches query cache directly.
+//   • subscribe only when Portfolio screen is focused (useFocusEffect)
+//   • unsubscribes automatically on blur (subscription cleanup in useEffect return)
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   PortfolioDocument,
   usePortfolioQuery,
@@ -27,6 +30,16 @@ export interface UsePortfolioResult {
 export function usePortfolio(): UsePortfolioResult {
   const isOpen = isMarketOpen(new Date());
   const [refreshing, setRefreshing] = useState(false);
+  // Track screen focus so we skip the subscription when off-screen
+  const [isFocused, setIsFocused] = useState(true);
+
+  // useFocusEffect fires on every focus/blur — standard Expo Router pattern
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      return () => { setIsFocused(false); };
+    }, []),
+  );
 
   const { data, loading, error, refetch, client } = usePortfolioQuery({
     fetchPolicy: 'cache-and-network',
@@ -34,10 +47,11 @@ export function usePortfolio(): UsePortfolioResult {
   });
 
   // MM-031 — portfolio P&L subscription.
-  // On each tick, write updated metrics + holdings directly into the Portfolio
-  // query cache so components re-render without a round-trip.
+  // Skip when: market closed OR screen not focused.
+  // onData patches Apollo cache via writeQuery so every component reading
+  // Portfolio re-renders with fresh metrics — no Zustand, no refetch (prompt 16).
   usePortfolioUpdateSubscription({
-    skip: !isOpen,
+    skip: !isOpen || !isFocused,
     onData: ({ data: subData }) => {
       const update = subData.data?.portfolioUpdate;
       if (!update) return;
@@ -45,10 +59,11 @@ export function usePortfolio(): UsePortfolioResult {
       const cached = client.readQuery({ query: PortfolioDocument });
       if (!cached?.portfolio) return;
 
-      // Merge updated per-holding metrics into cached holdings array
       type UpdateHolding = (typeof update.holdings)[number];
       type CachedHolding = (typeof cached.portfolio.holdings)[number];
-      const updatedHoldingMap = new Map<string, UpdateHolding>(update.holdings.map((h) => [h.symbol, h]));
+      const updatedHoldingMap = new Map<string, UpdateHolding>(
+        update.holdings.map((h) => [h.symbol, h]),
+      );
       const mergedHoldings = cached.portfolio.holdings.map((h: CachedHolding) => {
         const tick = updatedHoldingMap.get(h.symbol);
         if (!tick) return h;

@@ -6,6 +6,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   MarketDataProvider,
   type IndexQuote,
+  type IntradayPoint,
   type MarketOverview,
   type StockQuote,
 } from './market-data-provider.interface';
@@ -89,6 +90,14 @@ export class FallbackMarketDataProvider extends MarketDataProvider {
       () => this.fallback.getIndexQuote(indexSymbol),
       `getIndexQuote(${indexSymbol})`,
     );
+  }
+
+  async getIntradayData(symbol: string): Promise<IntradayPoint[]> {
+    return this.withFallback(
+      () => this.primary.getIntradayData(symbol),
+      () => this.fallback.getIntradayData(symbol),
+      `getIntradayData(${symbol})`,
+    ).catch(() => []);
   }
 
   async getMarketOverview(): Promise<MarketOverview> {

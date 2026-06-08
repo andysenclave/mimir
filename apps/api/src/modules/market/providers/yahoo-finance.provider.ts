@@ -7,6 +7,7 @@ import yahooFinance from 'yahoo-finance2';
 import {
   MarketDataProvider,
   type IndexQuote,
+  type IntradayPoint,
   type MarketOverview,
   type SectorPerformance,
   type StockQuote,
@@ -102,6 +103,23 @@ export class YahooFinanceProvider extends MarketDataProvider {
 
   private toYahooSymbol(symbol: string): string {
     return symbol.includes('.') || symbol.startsWith('^') ? symbol : `${symbol}.NS`;
+  }
+
+  // Yahoo Finance intraday via chart() endpoint (1m intervals, 1d range).
+  async getIntradayData(symbol: string): Promise<IntradayPoint[]> {
+    try {
+      const yahooSymbol = this.toYahooSymbol(symbol);
+      const result = (await yahooFinance.chart(yahooSymbol, { interval: '1m', range: '1d' })) as unknown as { quotes?: Array<{ date: unknown; close: unknown }> };
+      const quotes = result?.quotes ?? [];
+      return quotes
+        .filter((q) => q.date != null && q.close != null)
+        .map((q) => ({
+          timestamp: new Date(q.date as string).getTime(),
+          price: q.close as number,
+        }));
+    } catch {
+      return [];
+    }
   }
 
   private mapQuote(symbol: string, q: YahooQuote): StockQuote {

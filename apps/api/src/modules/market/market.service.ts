@@ -10,6 +10,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PUB_SUB } from '../../pubsub/pubsub.module';
 
+import { IntradayPointGql } from './entities/intraday-point.entity';
 import { StockQuoteGql } from './entities/stock-quote.entity';
 import { MarketDataProvider, type MarketOverview, type StockQuote } from './providers/market-data-provider.interface';
 
@@ -110,6 +111,14 @@ export class MarketService {
       volume: row.volume !== null && row.volume !== undefined ? Number(row.volume) : undefined,
       fetchedAt: row.fetchedAt,
     };
+  }
+
+  /**
+   * Intraday price series for a symbol (1-day, ~5-min intervals).
+   * Returns [] when market is closed or data unavailable — mobile hides chart gracefully.
+   */
+  async getStockIntraday(symbol: string): Promise<IntradayPointGql[]> {
+    return this.provider.getIntradayData(symbol);
   }
 
   /** @internal Used by unit tests for snapshot existence check. */
