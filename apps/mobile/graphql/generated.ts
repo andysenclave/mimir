@@ -23,6 +23,21 @@ export type Scalars = {
   DateTime: { input: string; output: string };
 };
 
+/** AI-generated educational stock insight (MM-032). */
+export type AiInsightGql = {
+  __typename?: 'AIInsightGql';
+  body: Scalars['String']['output'];
+  /** True when this result used the user's on-demand daily quota. */
+  fromQuota: Scalars['Boolean']['output'];
+  /** Unix ms timestamp of generation. */
+  generatedAt: Scalars['Float']['output'];
+  model: Scalars['String']['output'];
+  promptVersion: Scalars['String']['output'];
+  /** True when user has exceeded the 5/day soft cap. */
+  quotaWarning: Scalars['Boolean']['output'];
+  symbol: Scalars['String']['output'];
+};
+
 export type AuthUser = {
   __typename?: 'AuthUser';
   displayName: Maybe<Scalars['String']['output']>;
@@ -241,8 +256,23 @@ export type PortfolioUpdate = {
   totalValue: Scalars['Float']['output'];
 };
 
+export type ProfileStatsGql = {
+  __typename?: 'ProfileStatsGql';
+  budgetTierLabel: Scalars['String']['output'];
+  cashRemaining: Scalars['Float']['output'];
+  /** Phase 2 placeholder — always 0 in Phase 1. */
+  coursesDone: Scalars['Int']['output'];
+  /** Phase 2 placeholder — always 0 in Phase 1. */
+  quizScore: Scalars['Int']['output'];
+  /** Realized P&L since signup, in INR. */
+  totalReturnInr: Scalars['Float']['output'];
+  totalReturnPct: Scalars['Float']['output'];
+};
+
 export type Query = {
   __typename?: 'Query';
+  /** AI-generated educational context for a stock. Returns null when the feature flag is off, quota is exhausted, or insight generation failed. Mobile hides the section on null. */
+  aiInsight: Maybe<AiInsightGql>;
   /** Current market overview: indices, sectors, top movers. */
   marketOverview: MarketOverviewGql;
   /** The currently authenticated user. Requires a valid JWT. */
@@ -253,10 +283,16 @@ export type Query = {
   portfolio: Portfolio;
   /** Daily portfolio return vs NIFTY 50 and S&P 500. Returns null portfolioChangePct when the user has no holdings. */
   portfolioPerformance: PortfolioPerformanceGql;
+  /** Aggregated profile data for the Profile tab: identity, stats, top-3 watchlist. */
+  profile: UserProfileGql;
   /** Last-known snapshot for a single NSE symbol. */
   stock: Maybe<StockQuoteGql>;
   /** Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed. */
   stockIntraday: Array<IntradayPoint>;
+};
+
+export type QueryAiInsightArgs = {
+  symbol: Scalars['String']['input'];
 };
 
 export type QueryOrderHistoryArgs = {
@@ -336,6 +372,25 @@ export type UserDevice = {
   id: Scalars['ID']['output'];
   platform: Scalars['String']['output'];
   registeredAt: Scalars['String']['output'];
+};
+
+export type UserProfileGql = {
+  __typename?: 'UserProfileGql';
+  displayName: Maybe<Scalars['String']['output']>;
+  email: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** Unix ms — format as 'Member since {month} {year}'. */
+  memberSince: Scalars['Float']['output'];
+  stats: ProfileStatsGql;
+  watchlist: Array<WatchlistItemGql>;
+};
+
+export type WatchlistItemGql = {
+  __typename?: 'WatchlistItemGql';
+  alertEnabled: Scalars['Boolean']['output'];
+  changePct: Maybe<Scalars['Float']['output']>;
+  ltp: Maybe<Scalars['Float']['output']>;
+  symbol: Scalars['ID']['output'];
 };
 
 export type MarketOverviewQueryVariables = Exact<{ [key: string]: never }>;
@@ -521,6 +576,52 @@ export type PortfolioUpdateSubscription = {
       totalValue: number;
     }>;
   };
+};
+
+export type ProfileQueryVariables = Exact<{ [key: string]: never }>;
+
+export type ProfileQuery = {
+  __typename?: 'Query';
+  profile: {
+    __typename?: 'UserProfileGql';
+    id: string;
+    email: string;
+    displayName: string | null;
+    memberSince: number;
+    stats: {
+      __typename?: 'ProfileStatsGql';
+      totalReturnInr: number;
+      totalReturnPct: number;
+      budgetTierLabel: string;
+      cashRemaining: number;
+      coursesDone: number;
+      quizScore: number;
+    };
+    watchlist: Array<{
+      __typename?: 'WatchlistItemGql';
+      symbol: string;
+      ltp: number | null;
+      changePct: number | null;
+      alertEnabled: boolean;
+    }>;
+  };
+};
+
+export type AiInsightQueryVariables = Exact<{
+  symbol: Scalars['String']['input'];
+}>;
+
+export type AiInsightQuery = {
+  __typename?: 'Query';
+  aiInsight: {
+    __typename?: 'AIInsightGql';
+    symbol: string;
+    body: string;
+    promptVersion: string;
+    generatedAt: number;
+    fromQuota: boolean;
+    quotaWarning: boolean;
+  } | null;
 };
 
 export type StockDetailQueryVariables = Exact<{
@@ -1172,6 +1273,147 @@ export type PortfolioUpdateSubscriptionHookResult = ReturnType<
 >;
 export type PortfolioUpdateSubscriptionResult =
   Apollo.SubscriptionResult<PortfolioUpdateSubscription>;
+export const ProfileDocument = gql`
+  query Profile {
+    profile {
+      id
+      email
+      displayName
+      memberSince
+      stats {
+        totalReturnInr
+        totalReturnPct
+        budgetTierLabel
+        cashRemaining
+        coursesDone
+        quizScore
+      }
+      watchlist {
+        symbol
+        ltp
+        changePct
+        alertEnabled
+      }
+    }
+  }
+`;
+
+/**
+ * __useProfileQuery__
+ *
+ * To run a query within a React component, call `useProfileQuery` and pass it any options that fit your needs.
+ * When your component renders, `useProfileQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useProfileQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useProfileQuery(
+  baseOptions?: Apollo.QueryHookOptions<ProfileQuery, ProfileQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<ProfileQuery, ProfileQueryVariables>(ProfileDocument, options);
+}
+export function useProfileLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<ProfileQuery, ProfileQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<ProfileQuery, ProfileQueryVariables>(ProfileDocument, options);
+}
+// @ts-ignore
+export function useProfileSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<ProfileQuery, ProfileQueryVariables>,
+): Apollo.UseSuspenseQueryResult<ProfileQuery, ProfileQueryVariables>;
+export function useProfileSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<ProfileQuery, ProfileQueryVariables>,
+): Apollo.UseSuspenseQueryResult<ProfileQuery | undefined, ProfileQueryVariables>;
+export function useProfileSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<ProfileQuery, ProfileQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<ProfileQuery, ProfileQueryVariables>(ProfileDocument, options);
+}
+export type ProfileQueryHookResult = ReturnType<typeof useProfileQuery>;
+export type ProfileLazyQueryHookResult = ReturnType<typeof useProfileLazyQuery>;
+export type ProfileSuspenseQueryHookResult = ReturnType<typeof useProfileSuspenseQuery>;
+export type ProfileQueryResult = Apollo.QueryResult<ProfileQuery, ProfileQueryVariables>;
+export const AiInsightDocument = gql`
+  query AiInsight($symbol: String!) {
+    aiInsight(symbol: $symbol) {
+      symbol
+      body
+      promptVersion
+      generatedAt
+      fromQuota
+      quotaWarning
+    }
+  }
+`;
+
+/**
+ * __useAiInsightQuery__
+ *
+ * To run a query within a React component, call `useAiInsightQuery` and pass it any options that fit your needs.
+ * When your component renders, `useAiInsightQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useAiInsightQuery({
+ *   variables: {
+ *      symbol: // value for 'symbol'
+ *   },
+ * });
+ */
+export function useAiInsightQuery(
+  baseOptions: Apollo.QueryHookOptions<AiInsightQuery, AiInsightQueryVariables> &
+    ({ variables: AiInsightQueryVariables; skip?: boolean } | { skip: boolean }),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<AiInsightQuery, AiInsightQueryVariables>(AiInsightDocument, options);
+}
+export function useAiInsightLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<AiInsightQuery, AiInsightQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<AiInsightQuery, AiInsightQueryVariables>(AiInsightDocument, options);
+}
+// @ts-ignore
+export function useAiInsightSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<AiInsightQuery, AiInsightQueryVariables>,
+): Apollo.UseSuspenseQueryResult<AiInsightQuery, AiInsightQueryVariables>;
+export function useAiInsightSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<AiInsightQuery, AiInsightQueryVariables>,
+): Apollo.UseSuspenseQueryResult<AiInsightQuery | undefined, AiInsightQueryVariables>;
+export function useAiInsightSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<AiInsightQuery, AiInsightQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<AiInsightQuery, AiInsightQueryVariables>(
+    AiInsightDocument,
+    options,
+  );
+}
+export type AiInsightQueryHookResult = ReturnType<typeof useAiInsightQuery>;
+export type AiInsightLazyQueryHookResult = ReturnType<typeof useAiInsightLazyQuery>;
+export type AiInsightSuspenseQueryHookResult = ReturnType<typeof useAiInsightSuspenseQuery>;
+export type AiInsightQueryResult = Apollo.QueryResult<AiInsightQuery, AiInsightQueryVariables>;
 export const StockDetailDocument = gql`
   query StockDetail($symbol: String!) {
     stock(symbol: $symbol) {

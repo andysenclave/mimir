@@ -93,6 +93,7 @@ model User {
   devices         UserDevice[]
   notificationPreferences NotificationPreferences?
   aiInsightCalls  AIAuditLog[]
+  budgetEvents    BudgetEvent[]
 
   @@index([email])
 }
@@ -196,6 +197,23 @@ model Order {
 // ─────────────────────────────────────────────────────────────────────────────
 // Market & watchlist (MM-021..023, MM-037)
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Budget audit trail — one row per rollover or top-up event (MM-035).
+// Retained permanently for accounting; never deleted on cascade.
+model BudgetEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // 'ROLLOVER' | 'TOPUP'
+  amount      Decimal? @db.Decimal(18, 4)  // null for ROLLOVER; set for TOPUP
+  month       String   // 'YYYY-MM' — the cycle this event applies to
+
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([month])
+}
 
 model Watchlist {
   id           String   @id @default(cuid())

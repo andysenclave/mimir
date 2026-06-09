@@ -3,9 +3,9 @@
 // Prompt 16 (state-management): Apollo owns server state; useState for local form state.
 // Prompt 21 (api-client): codegen hooks only.
 
-import { useState, useCallback } from 'react';
-import { router } from 'expo-router';
 import * as Crypto from 'expo-crypto';
+import { router } from 'expo-router';
+import { useState, useCallback } from 'react';
 
 import {
   useStockDetailQuery,
@@ -16,6 +16,7 @@ import {
   type StockIntradayQuery,
   type PortfolioQuery,
 } from '@/graphql/generated';
+
 import { isMarketOpen } from '@mimir/shared';
 
 export type StockData = NonNullable<StockDetailQuery['stock']>;

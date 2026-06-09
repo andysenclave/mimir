@@ -396,10 +396,17 @@ export class TradingService {
       throw new TopUpExceedsTierMaxException(input.amount, headroom.toNumber());
     }
 
-    const updated = await this.prisma.monthlyBudget.update({
-      where: { id: budget.id },
-      data: { cashRemaining: { increment: topupDecimal } },
-    });
+    const month = budget.cycleStart.toISOString().slice(0, 7); // 'YYYY-MM'
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.monthlyBudget.update({
+        where: { id: budget.id },
+        data: { cashRemaining: { increment: topupDecimal } },
+      }),
+      // MM-035 AC: BudgetEvent row per top-up for audit trail
+      this.prisma.budgetEvent.create({
+        data: { userId, type: 'TOPUP', amount: topupDecimal, month },
+      }),
+    ]);
 
     this.logger.log(`Budget top-up ₹${input.amount} for budget ${budget.id}`, { userId });
     return this.toBudgetGql(updated);
@@ -442,6 +449,7 @@ export class TradingService {
 
       for (const budget of batch) {
         try {
+          const month = `${cycleStart.getUTCFullYear()}-${String(cycleStart.getUTCMonth() + 1).padStart(2, '0')}`;
           await this.prisma.$transaction([
             // Mark old budget EXPIRED and zero cashRemaining (STORIES.md MM-027).
             // Order history rows preserve the full spending audit trail.
@@ -459,6 +467,10 @@ export class TradingService {
                 cycleStart,
                 cycleEnd,
               },
+            }),
+            // MM-035 AC: BudgetEvent row per cycle for audit trail
+            this.prisma.budgetEvent.create({
+              data: { userId: budget.userId, type: 'ROLLOVER', month },
             }),
           ]);
           processed++;

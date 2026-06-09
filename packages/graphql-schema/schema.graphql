@@ -2,6 +2,16 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AIInsightGql {
+  body: String!
+  fromQuota: Boolean!
+  generatedAt: Float!
+  model: String!
+  promptVersion: String!
+  quotaWarning: Boolean!
+  symbol: String!
+}
+
 type AuthUser {
   displayName: String
   email: String!
@@ -252,7 +262,21 @@ type PortfolioUpdate {
   totalValue: Float!
 }
 
+type ProfileStatsGql {
+  budgetTierLabel: String!
+  cashRemaining: Float!
+  coursesDone: Float!
+  quizScore: Float!
+  totalReturnInr: Float!
+  totalReturnPct: Float!
+}
+
 type Query {
+  """
+  AI-generated educational context for a stock. Returns null when the feature flag is off, quota is exhausted, or insight generation failed. Mobile hides the section on null.
+  """
+  aiInsight(symbol: String!): AIInsightGql
+
   """Current market overview: indices, sectors, top movers."""
   marketOverview: MarketOverviewGql!
 
@@ -271,6 +295,11 @@ type Query {
   Daily portfolio return vs NIFTY 50 and S&P 500. Returns null portfolioChangePct when the user has no holdings.
   """
   portfolioPerformance: PortfolioPerformanceGql!
+
+  """
+  Aggregated profile data for the Profile tab: identity, stats, top-3 watchlist. Watchlist LTP is populated from MarketSnapshot; no live prices here — mobile subscribes to stockPrice subscription for live ticks.
+  """
+  profile: UserProfileGql!
 
   """Last-known snapshot for a single NSE symbol."""
   stock(symbol: String!): StockQuoteGql
@@ -346,4 +375,20 @@ type UserDevice {
   id: ID!
   platform: String!
   registeredAt: String!
+}
+
+type UserProfileGql {
+  displayName: String
+  email: String!
+  id: ID!
+  memberSince: Float!
+  stats: ProfileStatsGql!
+  watchlist: [WatchlistItemGql!]!
+}
+
+type WatchlistItemGql {
+  alertEnabled: Boolean!
+  changePct: Float
+  ltp: Float
+  symbol: ID!
 }

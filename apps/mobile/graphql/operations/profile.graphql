@@ -1,0 +1,37 @@
+# MM-036 — Profile tab queries.
+
+query Profile {
+  profile {
+    id
+    email
+    displayName
+    memberSince
+    stats {
+      totalReturnInr
+      totalReturnPct
+      budgetTierLabel
+      cashRemaining
+      coursesDone
+      quizScore
+    }
+    watchlist {
+      symbol
+      ltp
+      changePct
+      alertEnabled
+    }
+  }
+}
+
+# aiInsight — MM-032. Placed here because it's consumed by invest screen but
+# logically belongs with the AI-related queries.
+query AiInsight($symbol: String!) {
+  aiInsight(symbol: $symbol) {
+    symbol
+    body
+    promptVersion
+    generatedAt
+    fromQuota
+    quotaWarning
+  }
+}

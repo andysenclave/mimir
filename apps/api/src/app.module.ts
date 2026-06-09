@@ -9,6 +9,7 @@ import { graphqlConfigFactory } from './graphql/graphql-config.factory';
 import { HealthModule } from './health/health.module';
 import { HeartbeatModule } from './heartbeat/heartbeat.module';
 import { MeModule } from './me/me.module';
+import { AIModule } from './ai';
 import { AuthModule } from './modules/auth/auth.module';
 import { MarketModule } from './modules/market';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -17,6 +18,7 @@ import { TradingModule } from './modules/trading';
 import { ObservabilityModule } from './observability/observability.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PubSubModule } from './pubsub/pubsub.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -60,6 +62,7 @@ import { PubSubModule } from './pubsub/pubsub.module';
       ...graphqlConfigFactory(),
     }),
 
+    RedisModule,         // Shared ioredis client (cache, quota, rate-limiting)
     HealthModule,
     HeartbeatModule,
     AuthModule,
@@ -68,6 +71,7 @@ import { PubSubModule } from './pubsub/pubsub.module';
     NotificationsModule, // MM-018 — registerPushDevice mutation
     MarketModule,        // MM-021 — MarketDataPoller + MarketSnapshot
     TradingModule,       // MM-025 — portfolioPerformance query (orders + holdings in MM-026)
+    AIModule,            // MM-032 — AI Insights pipeline (Haiku)
   ],
 })
 export class AppModule {}

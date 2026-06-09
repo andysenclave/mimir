@@ -37,6 +37,21 @@ export class PostHogService implements OnModuleDestroy {
     return flags as Record<string, boolean | string>;
   }
 
+  /**
+   * Returns true when the flag is enabled for this user.
+   * Falls back to `defaultValue` when PostHog is unconfigured or the flag is absent.
+   * Default is `true` so features aren't silently disabled when PostHog key is missing in dev.
+   */
+  async isFeatureEnabled(flag: string, distinctId: string, defaultValue = true): Promise<boolean> {
+    if (this.client === null) return defaultValue;
+    try {
+      const value = await this.client.isFeatureEnabled(flag, distinctId);
+      return value ?? defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (this.client !== null) await this.client.shutdown();
   }

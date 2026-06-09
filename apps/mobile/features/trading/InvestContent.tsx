@@ -50,7 +50,7 @@ export function InvestContent({ result }: InvestContentProps): React.JSX.Element
           points={intradayPoints}
           positive={(stock?.changePct ?? 0) >= 0}
         />
-        <AIInsightCard />
+        <AIInsightCard symbol={stock?.symbol ?? ''} />
         <OrderForm
           symbol={stock?.symbol ?? ''}
           ltp={stock?.ltp ?? 0}

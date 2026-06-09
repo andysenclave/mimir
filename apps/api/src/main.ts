@@ -12,6 +12,7 @@ import { NestFactory } from '@nestjs/core';
 import { Queue } from 'bullmq';
 
 import { AppModule } from './app.module';
+import { AI_PRECOMPUTE_QUEUE, AI_PRECOMPUTE_JOB } from './jobs/ai-precompute-cron.processor';
 import { MARKET_DATA_POLL_QUEUE } from './modules/market/processors/market-data-poller.processor';
 import { initSentryEarly } from './observability/sentry.bootstrap';
 
@@ -45,6 +46,15 @@ async function bootstrap(): Promise<void> {
     // Off-hours jobs still fire but the processor returns early (isMarketOpen guard).
     { pattern: '*/15 * * * * 1-5', tz: 'Asia/Kolkata' },
     { name: 'poll', data: { symbols: [...TOP_100_NSE_SYMBOLS] } },
+  );
+
+  // MM-033 — AI pre-compute cron: daily 9:00 AM IST for top 100 NSE stocks.
+  // upsertJobScheduler is idempotent — safe on every deploy.
+  const aiPrecomputeQueue = app.get<Queue>(getQueueToken(AI_PRECOMPUTE_QUEUE));
+  await aiPrecomputeQueue.upsertJobScheduler(
+    'ai-daily-precompute',
+    { pattern: '0 9 * * *', tz: 'Asia/Kolkata' }, // 9:00 AM IST daily
+    { name: AI_PRECOMPUTE_JOB, data: {} },
   );
 
   console.info(`[mimir-api] listening on :${port}`);
