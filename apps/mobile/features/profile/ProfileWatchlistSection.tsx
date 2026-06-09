@@ -1,54 +1,104 @@
-// MM-036 — Top-3 watchlist preview. Live LTP via stockPrice subscription in useProfile.
-// Empty state shown when user hasn't added any stocks to watchlist yet.
+// MM-036 — Top-3 watchlist preview.
+// MM-037 — Alert toggle + remove from watchlist.
+// Live LTP via stockPrice subscription in useProfile.
 
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Switch } from 'react-native';
 import { TrendingUp } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { formatINR } from '@mimir/shared';
 import { tokens } from '@/theme/tokens';
+import {
+  useRemoveFromWatchlistMutation,
+  useToggleWatchlistAlertMutation,
+} from '@/graphql/generated';
 import type { WatchlistItem } from './hooks/useProfile';
 
 interface ProfileWatchlistSectionProps {
   watchlist: WatchlistItem[];
+  onWatchlistChanged: () => void;
 }
 
 interface WatchlistRowProps {
   item: WatchlistItem;
+  onRemove: (symbol: string) => void;
+  onToggleAlert: (symbol: string, enabled: boolean) => void;
 }
 
-function WatchlistRow({ item }: WatchlistRowProps): React.JSX.Element {
+function WatchlistRow({ item, onRemove, onToggleAlert }: WatchlistRowProps): React.JSX.Element {
   const router = useRouter();
   const isPositive = (item.changePct ?? 0) >= 0;
   const changeColor = isPositive ? 'text-gain' : 'text-loss';
   const changeSign  = isPositive ? '+' : '';
 
   return (
-    <Pressable
-      onPress={() => router.push(`/invest/${item.symbol}`)}
-      className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle active:bg-surface-hover"
-    >
-      <Text className="text-sm font-semibold text-text-primary">{item.symbol}</Text>
-      <View className="items-end gap-0.5">
+    <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+      {/* Tap → invest screen */}
+      <Pressable
+        onPress={() => router.push(`/invest/${item.symbol}` as `${string}`)}
+        className="flex-1 active:opacity-70"
+      >
+        <Text className="text-sm font-semibold text-text-primary">{item.symbol}</Text>
         {item.ltp !== undefined && item.ltp !== null ? (
-          <>
+          <View className="flex-row items-center gap-2 mt-0.5">
             <Text className="text-sm font-mono text-text-primary">{formatINR(item.ltp)}</Text>
             {item.changePct !== undefined && item.changePct !== null && (
               <Text className={`text-xs font-mono ${changeColor}`}>
                 {changeSign}{item.changePct.toFixed(2)}%
               </Text>
             )}
-          </>
+          </View>
         ) : (
-          <Text className="text-sm text-text-tertiary">—</Text>
+          <Text className="text-xs text-text-tertiary mt-0.5">Price unavailable</Text>
         )}
-      </View>
-    </Pressable>
+      </Pressable>
+
+      {/* Alert toggle */}
+      <Switch
+        value={item.alertEnabled}
+        onValueChange={(v) => onToggleAlert(item.symbol, v)}
+        accessibilityLabel={`Price alerts for ${item.symbol}`}
+      />
+
+      {/* Remove button */}
+      <Pressable
+        onPress={() => onRemove(item.symbol)}
+        hitSlop={8}
+        className="ml-3 active:opacity-60"
+        accessibilityLabel={`Remove ${item.symbol} from watchlist`}
+      >
+        <Text className="text-loss text-xs font-medium">Remove</Text>
+      </Pressable>
+    </View>
   );
 }
 
 export function ProfileWatchlistSection({
   watchlist,
+  onWatchlistChanged,
 }: ProfileWatchlistSectionProps): React.JSX.Element {
+  const [removeFromWatchlist] = useRemoveFromWatchlistMutation({
+    onCompleted: onWatchlistChanged,
+    update(cache) {
+      cache.evict({ fieldName: 'profile' });
+      cache.gc();
+    },
+  });
+
+  const [toggleWatchlistAlert] = useToggleWatchlistAlertMutation({
+    update(cache) {
+      cache.evict({ fieldName: 'profile' });
+      cache.gc();
+    },
+  });
+
+  function handleRemove(symbol: string): void {
+    void removeFromWatchlist({ variables: { symbol } });
+  }
+
+  function handleToggleAlert(symbol: string, enabled: boolean): void {
+    void toggleWatchlistAlert({ variables: { symbol, enabled } });
+  }
+
   if (watchlist.length === 0) {
     return (
       <View className="mx-4 mt-4">
@@ -73,7 +123,12 @@ export function ProfileWatchlistSection({
       </Text>
       <View className="rounded-2xl bg-surface-elevated overflow-hidden">
         {watchlist.map((item) => (
-          <WatchlistRow key={item.symbol} item={item} />
+          <WatchlistRow
+            key={item.symbol}
+            item={item}
+            onRemove={handleRemove}
+            onToggleAlert={handleToggleAlert}
+          />
         ))}
       </View>
     </View>

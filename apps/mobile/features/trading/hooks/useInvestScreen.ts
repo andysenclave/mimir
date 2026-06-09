@@ -3,7 +3,7 @@
 // Prompt 16 (state-management): Apollo owns server state; useState for local form state.
 // Prompt 21 (api-client): codegen hooks only.
 
-import * as Crypto from 'expo-crypto';
+import { isMarketOpen, uuidv4 } from '@mimir/shared';
 import { router } from 'expo-router';
 import { useState, useCallback } from 'react';
 
@@ -17,7 +17,6 @@ import {
   type PortfolioQuery,
 } from '@/graphql/generated';
 
-import { isMarketOpen } from '@mimir/shared';
 
 export type StockData = NonNullable<StockDetailQuery['stock']>;
 export type IntradayPoint = NonNullable<StockIntradayQuery['stockIntraday']>[number];
@@ -65,7 +64,9 @@ export function useInvestScreen(
     skip: !isOpen,
     onData: ({ data: subData }) => {
       const tick = subData.data?.stockPrice;
-      if (!tick || tick.symbol !== symbol) return;
+      
+      if (tick?.symbol !== symbol) return;
+      
       const cacheId = client.cache.identify({ __typename: 'StockQuoteGql', symbol });
       if (!cacheId) return;
       client.cache.modify({
@@ -92,7 +93,9 @@ export function useInvestScreen(
     const ltp = data?.stock?.ltp;
     if (!ltp) return;
 
-    const clientGeneratedOrderId = Crypto.randomUUID();
+    // Pure-JS UUID v4 — expo-crypto requires native AES which isn't in Expo Go.
+    // This is safe for idempotency keys: the mobile generates and owns the ID.
+    const clientGeneratedOrderId = uuidv4();
     setSubmitting(true);
     try {
       await placeOrder({
@@ -118,7 +121,7 @@ export function useInvestScreen(
     holding,
     cashRemaining,
     loading,
-    error: error as Error | undefined,
+    error,
     side,
     quantity,
     setSide,

@@ -92,6 +92,11 @@ type MonthlyBudget {
 
 type Mutation {
   """
+  Add a stock to the authenticated user's watchlist. Idempotent if already present. Throws WATCHLIST_LIMIT if the watchlist already has 50 entries.
+  """
+  addToWatchlist(symbol: String!): WatchlistItemGql!
+
+  """
   Complete onboarding by setting the monthly budget tier. Creates the first ACTIVE MonthlyBudget and flips User.onboardingDone. Idempotent.
   """
   completeOnboarding(input: CompleteOnboardingInput!): OnboardingResult!
@@ -107,9 +112,34 @@ type Mutation {
   registerPushDevice(input: RegisterPushDeviceInput!): UserDevice!
 
   """
+  Remove a stock from the authenticated user's watchlist. Idempotent — returns true even if the symbol was not present.
+  """
+  removeFromWatchlist(symbol: String!): Boolean!
+
+  """Enable or disable price-alert pushes for a watchlist item."""
+  toggleWatchlistAlert(enabled: Boolean!, symbol: String!): WatchlistItemGql!
+
+  """
   Add virtual cash to the current month's budget. Fails if the top-up would exceed the tier ceiling (budget.amount).
   """
   topupBudget(input: TopupBudgetInput!): MonthlyBudget!
+
+  """
+  Update the authenticated user's notification preferences. Partial update — only provided fields are changed. TRANSACTIONAL notifications cannot be disabled.
+  """
+  updateNotificationPreferences(input: UpdateNotificationPreferencesInput!): NotificationPreferencesGql!
+}
+
+type NotificationPreferencesGql {
+  budgetEnabled: Boolean!
+  dailyCap: Int!
+  educationalEnabled: Boolean!
+  id: ID!
+  portfolioEvtEnabled: Boolean!
+  priceAlertsEnabled: Boolean!
+  quietHoursEnd: String!
+  quietHoursStart: String!
+  streakEnabled: Boolean!
 }
 
 type OnboardingBudgetSummary {
@@ -283,6 +313,11 @@ type Query {
   """The currently authenticated user. Requires a valid JWT."""
   me: AuthUser!
 
+  """
+  Read the authenticated user's notification preferences. Auto-created with defaults if the user has never saved preferences.
+  """
+  notificationPreferences: NotificationPreferencesGql!
+
   """Chronological trade history for the authenticated user, newest first."""
   orderHistory(cursor: String, limit: Int! = 50): [Order!]!
 
@@ -369,6 +404,17 @@ type Subscription {
 input TopupBudgetInput {
   """Amount in INR to add. Must be positive and within tier headroom."""
   amount: Float!
+}
+
+input UpdateNotificationPreferencesInput {
+  budgetEnabled: Boolean
+  dailyCap: Int
+  educationalEnabled: Boolean
+  portfolioEvtEnabled: Boolean
+  priceAlertsEnabled: Boolean
+  quietHoursEnd: String
+  quietHoursStart: String
+  streakEnabled: Boolean
 }
 
 type UserDevice {

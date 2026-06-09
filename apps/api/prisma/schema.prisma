@@ -92,6 +92,7 @@ model User {
   watchlistItems  Watchlist[]
   devices         UserDevice[]
   notificationPreferences NotificationPreferences?
+  notificationLogs NotificationLog[]
   aiInsightCalls  AIAuditLog[]
   budgetEvents    BudgetEvent[]
 
@@ -271,6 +272,23 @@ model NotificationPreferences {
   createdAt           DateTime @default(now())
 
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notification audit log (MM-040)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model NotificationLog {
+  id       String               @id @default(cuid())
+  userId   String
+  category NotificationCategory
+  title    String
+  body     String
+  sentAt   DateTime             @default(now())
+
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sentAt])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

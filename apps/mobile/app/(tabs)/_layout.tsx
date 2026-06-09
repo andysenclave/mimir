@@ -9,9 +9,11 @@ import { View } from 'react-native';
 
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { tokens } from '@/theme/tokens';
+import { useStreakSetup } from '@/features/notifications/useStreakSetup';
 
 export default function TabsLayout(): React.JSX.Element {
   const { isAuthenticated, isLoading, user } = useAuth();
+  useStreakSetup(); // MM-039 — schedules streak reminder at 8 PM IST if not opened today
 
   if (isLoading) return <View className="flex-1 bg-bg-primary" />;
   if (!isAuthenticated) return <Redirect href="/login" />;

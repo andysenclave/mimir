@@ -1,9 +1,10 @@
-// Stock header bar: back button, symbol, name, sector tag.
+// Stock header bar: back button, symbol, name, watchlist button (MM-037).
 
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { tokens } from '@/theme/tokens';
+import { WatchlistButton } from './WatchlistButton';
 
 interface StockHeaderProps {
   symbol: string;
@@ -30,6 +31,8 @@ export function StockHeader({ symbol, name }: StockHeaderProps): React.JSX.Eleme
           </Text>
         )}
       </View>
+      {/* MM-037 — Add/remove watchlist toggle */}
+      {symbol.length > 0 && <WatchlistButton symbol={symbol} />}
     </View>
   );
 }

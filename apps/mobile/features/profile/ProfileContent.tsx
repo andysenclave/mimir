@@ -30,7 +30,7 @@ export function ProfileContent({
       >
         <ProfileUserCard profile={profile} />
         <ProfileStatsRow stats={profile.stats} />
-        <ProfileWatchlistSection watchlist={profile.watchlist} />
+        <ProfileWatchlistSection watchlist={profile.watchlist} onWatchlistChanged={onRefresh} />
         <ProfileSettingsSection />
 
         {/* Compliance footer — CLAUDE.md §19 */}

@@ -27,7 +27,7 @@ query StockIntraday($symbol: String!) {
   }
 }
 
-# MM-030 history tab — chronological trade list
+# MM-030 history tab — chronological trade list (MM-038 adds correlationId)
 query OrderHistory($limit: Int, $cursor: String) {
   orderHistory(limit: $limit, cursor: $cursor) {
     id
@@ -38,6 +38,7 @@ query OrderHistory($limit: Int, $cursor: String) {
     orderValue
     realizedPnl
     status
+    correlationId
     executedAt
   }
 }

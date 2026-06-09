@@ -13,6 +13,8 @@ import { Queue } from 'bullmq';
 
 import { AppModule } from './app.module';
 import { AI_PRECOMPUTE_QUEUE, AI_PRECOMPUTE_JOB } from './jobs/ai-precompute-cron.processor';
+import { BUDGET_NUDGE_QUEUE, BUDGET_NUDGE_JOB } from './jobs/budget-nudge.processor';
+import { PORTFOLIO_EVENTS_QUEUE, PORTFOLIO_EVENTS_JOB } from './jobs/portfolio-events.processor';
 import { MARKET_DATA_POLL_QUEUE } from './modules/market/processors/market-data-poller.processor';
 import { initSentryEarly } from './observability/sentry.bootstrap';
 
@@ -55,6 +57,23 @@ async function bootstrap(): Promise<void> {
     'ai-daily-precompute',
     { pattern: '0 9 * * *', tz: 'Asia/Kolkata' }, // 9:00 AM IST daily
     { name: AI_PRECOMPUTE_JOB, data: {} },
+  );
+
+  // MM-040 — budget-nudge cron: 09:00 IST on 15th + last 3 calendar days of month.
+  // 28/29/30/31 covers all months; 31 simply won't fire in shorter months (BullMQ handles gracefully).
+  const budgetNudgeQueue = app.get<Queue>(getQueueToken(BUDGET_NUDGE_QUEUE));
+  await budgetNudgeQueue.upsertJobScheduler(
+    'budget-nudge-cron',
+    { pattern: '0 9 15,28,29,30,31 * *', tz: 'Asia/Kolkata' },
+    { name: BUDGET_NUDGE_JOB, data: {} },
+  );
+
+  // MM-040 — portfolio-events cron: 15:30 IST on weekdays (30 min after NSE close).
+  const portfolioEventsQueue = app.get<Queue>(getQueueToken(PORTFOLIO_EVENTS_QUEUE));
+  await portfolioEventsQueue.upsertJobScheduler(
+    'portfolio-events-cron',
+    { pattern: '0 30 15 * * 1-5', tz: 'Asia/Kolkata' }, // 6-field with weekday
+    { name: PORTFOLIO_EVENTS_JOB, data: {} },
   );
 
   console.info(`[mimir-api] listening on :${port}`);

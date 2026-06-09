@@ -14,6 +14,7 @@ import { MarketModule } from '../market/market.module';
 import { BudgetRolloverProcessor, BUDGET_ROLLOVER_QUEUE } from './processors/budget-rollover.processor';
 import { TradingResolver } from './trading.resolver';
 import { TradingService, TRADING_REDIS, TRADING_PUB_SUB } from './trading.service';
+import { ORDER_FILL_QUEUE } from '../../jobs/order-fill-notification.processor';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { TradingService, TRADING_REDIS, TRADING_PUB_SUB } from './trading.servic
     PubSubModule,
     MarketModule,
     BullModule.registerQueue({ name: BUDGET_ROLLOVER_QUEUE }),
+    BullModule.registerQueue({ name: ORDER_FILL_QUEUE }),
   ],
   providers: [
     // ── PubSub alias (the shared PUB_SUB token re-exported under TRADING_PUB_SUB

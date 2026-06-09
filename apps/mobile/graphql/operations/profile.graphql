@@ -35,3 +35,53 @@ query AiInsight($symbol: String!) {
     quotaWarning
   }
 }
+
+# MM-037 — Watchlist mutations.
+mutation AddToWatchlist($symbol: String!) {
+  addToWatchlist(symbol: $symbol) {
+    symbol
+    alertEnabled
+    ltp
+    changePct
+  }
+}
+
+mutation RemoveFromWatchlist($symbol: String!) {
+  removeFromWatchlist(symbol: $symbol)
+}
+
+mutation ToggleWatchlistAlert($symbol: String!, $enabled: Boolean!) {
+  toggleWatchlistAlert(symbol: $symbol, enabled: $enabled) {
+    symbol
+    alertEnabled
+  }
+}
+
+# MM-041 — Notification preferences.
+query NotificationPreferences {
+  notificationPreferences {
+    id
+    streakEnabled
+    budgetEnabled
+    priceAlertsEnabled
+    portfolioEvtEnabled
+    educationalEnabled
+    quietHoursStart
+    quietHoursEnd
+    dailyCap
+  }
+}
+
+mutation UpdateNotificationPreferences($input: UpdateNotificationPreferencesInput!) {
+  updateNotificationPreferences(input: $input) {
+    id
+    streakEnabled
+    budgetEnabled
+    priceAlertsEnabled
+    portfolioEvtEnabled
+    educationalEnabled
+    quietHoursStart
+    quietHoursEnd
+    dailyCap
+  }
+}

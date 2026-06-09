@@ -4,7 +4,7 @@
 // Per prompt 24: thin resolver, single service call, returns @ObjectType.
 
 import { UseGuards } from '@nestjs/common';
-import { Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import {
   CurrentUser,
@@ -13,7 +13,7 @@ import {
 import { LocalAuthGuard } from '../modules/auth/auth.guard';
 
 import { AuthUser } from './entities/auth-user.entity';
-import { UserProfileGql } from './entities/profile.entity';
+import { UserProfileGql, WatchlistItemGql } from './entities/profile.entity';
 import { MeService } from './me.service';
 
 @Resolver(() => AuthUser)
@@ -42,5 +42,44 @@ export class MeResolver {
       throw new Error('User context missing despite LocalAuthGuard');
     }
     return this.meService.getProfile(user.id);
+  }
+
+  // ─── MM-037 — Watchlist mutations ──────────────────────────────────────────
+
+  @Mutation(() => WatchlistItemGql, {
+    description:
+      'Add a stock to the authenticated user\'s watchlist. Idempotent if already present. ' +
+      'Throws WATCHLIST_LIMIT if the watchlist already has 50 entries.',
+  })
+  addToWatchlist(
+    @CurrentUser() user: AuthUserContext | null,
+    @Args('symbol') symbol: string,
+  ): Promise<WatchlistItemGql> {
+    if (user === null) throw new Error('User context missing despite LocalAuthGuard');
+    return this.meService.addToWatchlist(user.id, symbol);
+  }
+
+  @Mutation(() => Boolean, {
+    description:
+      'Remove a stock from the authenticated user\'s watchlist. Idempotent — returns true even if the symbol was not present.',
+  })
+  removeFromWatchlist(
+    @CurrentUser() user: AuthUserContext | null,
+    @Args('symbol') symbol: string,
+  ): Promise<boolean> {
+    if (user === null) throw new Error('User context missing despite LocalAuthGuard');
+    return this.meService.removeFromWatchlist(user.id, symbol);
+  }
+
+  @Mutation(() => WatchlistItemGql, {
+    description: 'Enable or disable price-alert pushes for a watchlist item.',
+  })
+  toggleWatchlistAlert(
+    @CurrentUser() user: AuthUserContext | null,
+    @Args('symbol') symbol: string,
+    @Args('enabled') enabled: boolean,
+  ): Promise<WatchlistItemGql> {
+    if (user === null) throw new Error('User context missing despite LocalAuthGuard');
+    return this.meService.toggleWatchlistAlert(user.id, symbol, enabled);
   }
 }

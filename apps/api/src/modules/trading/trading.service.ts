@@ -25,7 +25,10 @@
 
 import { placeOrderInputSchema } from '@mimir/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
+import type { Queue } from 'bullmq';
+import { ORDER_FILL_QUEUE, ORDER_FILL_JOB, type OrderFillJobData } from '../../jobs/order-fill-notification.processor';
 
 import {
   InsufficientBudgetException,
@@ -111,6 +114,7 @@ export class TradingService {
     private readonly marketProvider: MarketDataProvider,
     @Inject(TRADING_REDIS) private readonly redis: Redis,
     @Inject(TRADING_PUB_SUB) private readonly pubSub: RedisPubSub,
+    @InjectQueue(ORDER_FILL_QUEUE) private readonly orderFillQueue: Queue,
   ) {}
 
   // ── MM-025 ────────────────────────────────────────────────────────────────
@@ -372,6 +376,18 @@ export class TradingService {
       `Order ${order.id} executed — ${order.type} ${order.quantity}× ${order.symbol} @ ₹${ltp}`,
       { userId },
     );
+
+    // MM-040 — enqueue transactional push notification (fire-and-forget).
+    const jobData: OrderFillJobData = {
+      userId,
+      symbol: order.symbol,
+      orderType: order.type,
+      quantity: order.quantity,
+      priceAtExecution: ltp,
+    };
+    this.orderFillQueue.add(ORDER_FILL_JOB, jobData, { attempts: 2 }).catch((err: unknown) => {
+      this.logger.error('Failed to enqueue order-fill notification', err);
+    });
 
     return this.toOrderGql(order);
   }

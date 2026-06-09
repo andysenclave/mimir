@@ -43,6 +43,7 @@
     "bullmq": "^5.77.6",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "expo-server-sdk": "^6.1.0",
     "graphql": "^16.10.0",
     "graphql-redis-subscriptions": "^2.7.0",
     "graphql-subscriptions": "^3.0.0",

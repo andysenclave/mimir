@@ -2,12 +2,13 @@
 // Prisma fetch keyed off the @CurrentUser id.
 
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { WatchlistLimitException, WatchlistItemNotFoundException } from '../common/exceptions/watchlist.exceptions';
 
 import { PrismaService } from '../prisma/prisma.service';
 
 import { BUDGET_TIERS, type BudgetTierId } from '@mimir/shared';
 import type { AuthUser } from './entities/auth-user.entity';
-import type { UserProfileGql } from './entities/profile.entity';
+import type { UserProfileGql, WatchlistItemGql } from './entities/profile.entity';
 
 @Injectable()
 export class MeService {
@@ -91,5 +92,61 @@ export class MeService {
         changePct: undefined,
       })),
     };
+  }
+
+  // ─── MM-037 — Watchlist mutations ────────────────────────────────────────────
+
+  /** Add a stock to the user's watchlist. Max 50 entries. Idempotent if already present. */
+  async addToWatchlist(userId: string, symbol: string): Promise<WatchlistItemGql> {
+    const normalised = symbol.toUpperCase().trim();
+
+    // Check if already present — upsert semantics (idempotent).
+    const existing = await this.prisma.watchlist.findUnique({
+      where: { userId_symbol: { userId, symbol: normalised } },
+    });
+    if (existing) {
+      return { symbol: existing.symbol, alertEnabled: existing.alertEnabled };
+    }
+
+    // Enforce 50-item cap.
+    const count = await this.prisma.watchlist.count({ where: { userId } });
+    if (count >= 50) throw new WatchlistLimitException();
+
+    const created = await this.prisma.watchlist.create({
+      data: { userId, symbol: normalised, alertEnabled: true },
+    });
+    return { symbol: created.symbol, alertEnabled: created.alertEnabled };
+  }
+
+  /** Remove a stock from the user's watchlist. Idempotent if not present. */
+  async removeFromWatchlist(userId: string, symbol: string): Promise<boolean> {
+    const normalised = symbol.toUpperCase().trim();
+    const existing = await this.prisma.watchlist.findUnique({
+      where: { userId_symbol: { userId, symbol: normalised } },
+    });
+    if (!existing) return true; // idempotent — already gone
+    await this.prisma.watchlist.delete({
+      where: { userId_symbol: { userId, symbol: normalised } },
+    });
+    return true;
+  }
+
+  /** Toggle the price-alert flag for a watchlist item. */
+  async toggleWatchlistAlert(
+    userId: string,
+    symbol: string,
+    enabled: boolean,
+  ): Promise<WatchlistItemGql> {
+    const normalised = symbol.toUpperCase().trim();
+    const existing = await this.prisma.watchlist.findUnique({
+      where: { userId_symbol: { userId, symbol: normalised } },
+    });
+    if (!existing) throw new WatchlistItemNotFoundException(normalised);
+
+    const updated = await this.prisma.watchlist.update({
+      where: { userId_symbol: { userId, symbol: normalised } },
+      data: { alertEnabled: enabled },
+    });
+    return { symbol: updated.symbol, alertEnabled: updated.alertEnabled };
   }
 }

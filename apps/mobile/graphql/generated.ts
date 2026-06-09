@@ -23,17 +23,13 @@ export type Scalars = {
   DateTime: { input: string; output: string };
 };
 
-/** AI-generated educational stock insight (MM-032). */
 export type AiInsightGql = {
   __typename?: 'AIInsightGql';
   body: Scalars['String']['output'];
-  /** True when this result used the user's on-demand daily quota. */
   fromQuota: Scalars['Boolean']['output'];
-  /** Unix ms timestamp of generation. */
   generatedAt: Scalars['Float']['output'];
   model: Scalars['String']['output'];
   promptVersion: Scalars['String']['output'];
-  /** True when user has exceeded the 5/day soft cap. */
   quotaWarning: Scalars['Boolean']['output'];
   symbol: Scalars['String']['output'];
 };
@@ -110,14 +106,26 @@ export type MonthlyBudget = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  /** Add a stock to the authenticated user's watchlist. Idempotent if already present. Throws WATCHLIST_LIMIT if the watchlist already has 50 entries. */
+  addToWatchlist: WatchlistItemGql;
   /** Complete onboarding by setting the monthly budget tier. Creates the first ACTIVE MonthlyBudget and flips User.onboardingDone. Idempotent. */
   completeOnboarding: OnboardingResult;
   /** Place a simulated market order (BUY or SELL). Idempotent: submitting the same clientGeneratedOrderId returns the existing order. Atomic: Order, Holding, and MonthlyBudget update in a single transaction. */
   placeOrder: Order;
   /** Register an Expo push token for the authenticated user. Idempotent on (userId, expoPushToken). */
   registerPushDevice: UserDevice;
+  /** Remove a stock from the authenticated user's watchlist. Idempotent — returns true even if the symbol was not present. */
+  removeFromWatchlist: Scalars['Boolean']['output'];
+  /** Enable or disable price-alert pushes for a watchlist item. */
+  toggleWatchlistAlert: WatchlistItemGql;
   /** Add virtual cash to the current month's budget. Fails if the top-up would exceed the tier ceiling (budget.amount). */
   topupBudget: MonthlyBudget;
+  /** Update the authenticated user's notification preferences. Partial update — only provided fields are changed. TRANSACTIONAL notifications cannot be disabled. */
+  updateNotificationPreferences: NotificationPreferencesGql;
+};
+
+export type MutationAddToWatchlistArgs = {
+  symbol: Scalars['String']['input'];
 };
 
 export type MutationCompleteOnboardingArgs = {
@@ -132,8 +140,34 @@ export type MutationRegisterPushDeviceArgs = {
   input: RegisterPushDeviceInput;
 };
 
+export type MutationRemoveFromWatchlistArgs = {
+  symbol: Scalars['String']['input'];
+};
+
+export type MutationToggleWatchlistAlertArgs = {
+  enabled: Scalars['Boolean']['input'];
+  symbol: Scalars['String']['input'];
+};
+
 export type MutationTopupBudgetArgs = {
   input: TopupBudgetInput;
+};
+
+export type MutationUpdateNotificationPreferencesArgs = {
+  input: UpdateNotificationPreferencesInput;
+};
+
+export type NotificationPreferencesGql = {
+  __typename?: 'NotificationPreferencesGql';
+  budgetEnabled: Scalars['Boolean']['output'];
+  dailyCap: Scalars['Int']['output'];
+  educationalEnabled: Scalars['Boolean']['output'];
+  id: Scalars['ID']['output'];
+  portfolioEvtEnabled: Scalars['Boolean']['output'];
+  priceAlertsEnabled: Scalars['Boolean']['output'];
+  quietHoursEnd: Scalars['String']['output'];
+  quietHoursStart: Scalars['String']['output'];
+  streakEnabled: Scalars['Boolean']['output'];
 };
 
 export type OnboardingBudgetSummary = {
@@ -260,11 +294,8 @@ export type ProfileStatsGql = {
   __typename?: 'ProfileStatsGql';
   budgetTierLabel: Scalars['String']['output'];
   cashRemaining: Scalars['Float']['output'];
-  /** Phase 2 placeholder — always 0 in Phase 1. */
-  coursesDone: Scalars['Int']['output'];
-  /** Phase 2 placeholder — always 0 in Phase 1. */
-  quizScore: Scalars['Int']['output'];
-  /** Realized P&L since signup, in INR. */
+  coursesDone: Scalars['Float']['output'];
+  quizScore: Scalars['Float']['output'];
   totalReturnInr: Scalars['Float']['output'];
   totalReturnPct: Scalars['Float']['output'];
 };
@@ -277,13 +308,15 @@ export type Query = {
   marketOverview: MarketOverviewGql;
   /** The currently authenticated user. Requires a valid JWT. */
   me: AuthUser;
+  /** Read the authenticated user's notification preferences. Auto-created with defaults if the user has never saved preferences. */
+  notificationPreferences: NotificationPreferencesGql;
   /** Chronological trade history for the authenticated user, newest first. */
   orderHistory: Array<Order>;
   /** Full portfolio snapshot: holdings with live P&L, active budget, aggregate metrics, and approximate 30-day equity curve. */
   portfolio: Portfolio;
   /** Daily portfolio return vs NIFTY 50 and S&P 500. Returns null portfolioChangePct when the user has no holdings. */
   portfolioPerformance: PortfolioPerformanceGql;
-  /** Aggregated profile data for the Profile tab: identity, stats, top-3 watchlist. */
+  /** Aggregated profile data for the Profile tab: identity, stats, top-3 watchlist. Watchlist LTP is populated from MarketSnapshot; no live prices here — mobile subscribes to stockPrice subscription for live ticks. */
   profile: UserProfileGql;
   /** Last-known snapshot for a single NSE symbol. */
   stock: Maybe<StockQuoteGql>;
@@ -367,6 +400,17 @@ export type TopupBudgetInput = {
   amount: Scalars['Float']['input'];
 };
 
+export type UpdateNotificationPreferencesInput = {
+  budgetEnabled?: InputMaybe<Scalars['Boolean']['input']>;
+  dailyCap?: InputMaybe<Scalars['Int']['input']>;
+  educationalEnabled?: InputMaybe<Scalars['Boolean']['input']>;
+  portfolioEvtEnabled?: InputMaybe<Scalars['Boolean']['input']>;
+  priceAlertsEnabled?: InputMaybe<Scalars['Boolean']['input']>;
+  quietHoursEnd?: InputMaybe<Scalars['String']['input']>;
+  quietHoursStart?: InputMaybe<Scalars['String']['input']>;
+  streakEnabled?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
 export type UserDevice = {
   __typename?: 'UserDevice';
   id: Scalars['ID']['output'];
@@ -379,7 +423,6 @@ export type UserProfileGql = {
   displayName: Maybe<Scalars['String']['output']>;
   email: Scalars['String']['output'];
   id: Scalars['ID']['output'];
-  /** Unix ms — format as 'Member since {month} {year}'. */
   memberSince: Scalars['Float']['output'];
   stats: ProfileStatsGql;
   watchlist: Array<WatchlistItemGql>;
@@ -624,6 +667,75 @@ export type AiInsightQuery = {
   } | null;
 };
 
+export type AddToWatchlistMutationVariables = Exact<{
+  symbol: Scalars['String']['input'];
+}>;
+
+export type AddToWatchlistMutation = {
+  __typename?: 'Mutation';
+  addToWatchlist: {
+    __typename?: 'WatchlistItemGql';
+    symbol: string;
+    alertEnabled: boolean;
+    ltp: number | null;
+    changePct: number | null;
+  };
+};
+
+export type RemoveFromWatchlistMutationVariables = Exact<{
+  symbol: Scalars['String']['input'];
+}>;
+
+export type RemoveFromWatchlistMutation = { __typename?: 'Mutation'; removeFromWatchlist: boolean };
+
+export type ToggleWatchlistAlertMutationVariables = Exact<{
+  symbol: Scalars['String']['input'];
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type ToggleWatchlistAlertMutation = {
+  __typename?: 'Mutation';
+  toggleWatchlistAlert: { __typename?: 'WatchlistItemGql'; symbol: string; alertEnabled: boolean };
+};
+
+export type NotificationPreferencesQueryVariables = Exact<{ [key: string]: never }>;
+
+export type NotificationPreferencesQuery = {
+  __typename?: 'Query';
+  notificationPreferences: {
+    __typename?: 'NotificationPreferencesGql';
+    id: string;
+    streakEnabled: boolean;
+    budgetEnabled: boolean;
+    priceAlertsEnabled: boolean;
+    portfolioEvtEnabled: boolean;
+    educationalEnabled: boolean;
+    quietHoursStart: string;
+    quietHoursEnd: string;
+    dailyCap: number;
+  };
+};
+
+export type UpdateNotificationPreferencesMutationVariables = Exact<{
+  input: UpdateNotificationPreferencesInput;
+}>;
+
+export type UpdateNotificationPreferencesMutation = {
+  __typename?: 'Mutation';
+  updateNotificationPreferences: {
+    __typename?: 'NotificationPreferencesGql';
+    id: string;
+    streakEnabled: boolean;
+    budgetEnabled: boolean;
+    priceAlertsEnabled: boolean;
+    portfolioEvtEnabled: boolean;
+    educationalEnabled: boolean;
+    quietHoursStart: string;
+    quietHoursEnd: string;
+    dailyCap: number;
+  };
+};
+
 export type StockDetailQueryVariables = Exact<{
   symbol: Scalars['String']['input'];
 }>;
@@ -672,6 +784,7 @@ export type OrderHistoryQuery = {
     orderValue: number;
     realizedPnl: number | null;
     status: string;
+    correlationId: string;
     executedAt: string;
   }>;
 };
@@ -1414,6 +1527,314 @@ export type AiInsightQueryHookResult = ReturnType<typeof useAiInsightQuery>;
 export type AiInsightLazyQueryHookResult = ReturnType<typeof useAiInsightLazyQuery>;
 export type AiInsightSuspenseQueryHookResult = ReturnType<typeof useAiInsightSuspenseQuery>;
 export type AiInsightQueryResult = Apollo.QueryResult<AiInsightQuery, AiInsightQueryVariables>;
+export const AddToWatchlistDocument = gql`
+  mutation AddToWatchlist($symbol: String!) {
+    addToWatchlist(symbol: $symbol) {
+      symbol
+      alertEnabled
+      ltp
+      changePct
+    }
+  }
+`;
+export type AddToWatchlistMutationFn = Apollo.MutationFunction<
+  AddToWatchlistMutation,
+  AddToWatchlistMutationVariables
+>;
+
+/**
+ * __useAddToWatchlistMutation__
+ *
+ * To run a mutation, you first call `useAddToWatchlistMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useAddToWatchlistMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [addToWatchlistMutation, { data, loading, error }] = useAddToWatchlistMutation({
+ *   variables: {
+ *      symbol: // value for 'symbol'
+ *   },
+ * });
+ */
+export function useAddToWatchlistMutation(
+  baseOptions?: Apollo.MutationHookOptions<AddToWatchlistMutation, AddToWatchlistMutationVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<AddToWatchlistMutation, AddToWatchlistMutationVariables>(
+    AddToWatchlistDocument,
+    options,
+  );
+}
+export type AddToWatchlistMutationHookResult = ReturnType<typeof useAddToWatchlistMutation>;
+export type AddToWatchlistMutationResult = Apollo.MutationResult<AddToWatchlistMutation>;
+export type AddToWatchlistMutationOptions = Apollo.BaseMutationOptions<
+  AddToWatchlistMutation,
+  AddToWatchlistMutationVariables
+>;
+export const RemoveFromWatchlistDocument = gql`
+  mutation RemoveFromWatchlist($symbol: String!) {
+    removeFromWatchlist(symbol: $symbol)
+  }
+`;
+export type RemoveFromWatchlistMutationFn = Apollo.MutationFunction<
+  RemoveFromWatchlistMutation,
+  RemoveFromWatchlistMutationVariables
+>;
+
+/**
+ * __useRemoveFromWatchlistMutation__
+ *
+ * To run a mutation, you first call `useRemoveFromWatchlistMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useRemoveFromWatchlistMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [removeFromWatchlistMutation, { data, loading, error }] = useRemoveFromWatchlistMutation({
+ *   variables: {
+ *      symbol: // value for 'symbol'
+ *   },
+ * });
+ */
+export function useRemoveFromWatchlistMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    RemoveFromWatchlistMutation,
+    RemoveFromWatchlistMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<RemoveFromWatchlistMutation, RemoveFromWatchlistMutationVariables>(
+    RemoveFromWatchlistDocument,
+    options,
+  );
+}
+export type RemoveFromWatchlistMutationHookResult = ReturnType<
+  typeof useRemoveFromWatchlistMutation
+>;
+export type RemoveFromWatchlistMutationResult = Apollo.MutationResult<RemoveFromWatchlistMutation>;
+export type RemoveFromWatchlistMutationOptions = Apollo.BaseMutationOptions<
+  RemoveFromWatchlistMutation,
+  RemoveFromWatchlistMutationVariables
+>;
+export const ToggleWatchlistAlertDocument = gql`
+  mutation ToggleWatchlistAlert($symbol: String!, $enabled: Boolean!) {
+    toggleWatchlistAlert(symbol: $symbol, enabled: $enabled) {
+      symbol
+      alertEnabled
+    }
+  }
+`;
+export type ToggleWatchlistAlertMutationFn = Apollo.MutationFunction<
+  ToggleWatchlistAlertMutation,
+  ToggleWatchlistAlertMutationVariables
+>;
+
+/**
+ * __useToggleWatchlistAlertMutation__
+ *
+ * To run a mutation, you first call `useToggleWatchlistAlertMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useToggleWatchlistAlertMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [toggleWatchlistAlertMutation, { data, loading, error }] = useToggleWatchlistAlertMutation({
+ *   variables: {
+ *      symbol: // value for 'symbol'
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useToggleWatchlistAlertMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    ToggleWatchlistAlertMutation,
+    ToggleWatchlistAlertMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<ToggleWatchlistAlertMutation, ToggleWatchlistAlertMutationVariables>(
+    ToggleWatchlistAlertDocument,
+    options,
+  );
+}
+export type ToggleWatchlistAlertMutationHookResult = ReturnType<
+  typeof useToggleWatchlistAlertMutation
+>;
+export type ToggleWatchlistAlertMutationResult =
+  Apollo.MutationResult<ToggleWatchlistAlertMutation>;
+export type ToggleWatchlistAlertMutationOptions = Apollo.BaseMutationOptions<
+  ToggleWatchlistAlertMutation,
+  ToggleWatchlistAlertMutationVariables
+>;
+export const NotificationPreferencesDocument = gql`
+  query NotificationPreferences {
+    notificationPreferences {
+      id
+      streakEnabled
+      budgetEnabled
+      priceAlertsEnabled
+      portfolioEvtEnabled
+      educationalEnabled
+      quietHoursStart
+      quietHoursEnd
+      dailyCap
+    }
+  }
+`;
+
+/**
+ * __useNotificationPreferencesQuery__
+ *
+ * To run a query within a React component, call `useNotificationPreferencesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useNotificationPreferencesQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useNotificationPreferencesQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useNotificationPreferencesQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    NotificationPreferencesQuery,
+    NotificationPreferencesQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<NotificationPreferencesQuery, NotificationPreferencesQueryVariables>(
+    NotificationPreferencesDocument,
+    options,
+  );
+}
+export function useNotificationPreferencesLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    NotificationPreferencesQuery,
+    NotificationPreferencesQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<NotificationPreferencesQuery, NotificationPreferencesQueryVariables>(
+    NotificationPreferencesDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useNotificationPreferencesSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    NotificationPreferencesQuery,
+    NotificationPreferencesQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  NotificationPreferencesQuery,
+  NotificationPreferencesQueryVariables
+>;
+export function useNotificationPreferencesSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        NotificationPreferencesQuery,
+        NotificationPreferencesQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  NotificationPreferencesQuery | undefined,
+  NotificationPreferencesQueryVariables
+>;
+export function useNotificationPreferencesSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        NotificationPreferencesQuery,
+        NotificationPreferencesQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    NotificationPreferencesQuery,
+    NotificationPreferencesQueryVariables
+  >(NotificationPreferencesDocument, options);
+}
+export type NotificationPreferencesQueryHookResult = ReturnType<
+  typeof useNotificationPreferencesQuery
+>;
+export type NotificationPreferencesLazyQueryHookResult = ReturnType<
+  typeof useNotificationPreferencesLazyQuery
+>;
+export type NotificationPreferencesSuspenseQueryHookResult = ReturnType<
+  typeof useNotificationPreferencesSuspenseQuery
+>;
+export type NotificationPreferencesQueryResult = Apollo.QueryResult<
+  NotificationPreferencesQuery,
+  NotificationPreferencesQueryVariables
+>;
+export const UpdateNotificationPreferencesDocument = gql`
+  mutation UpdateNotificationPreferences($input: UpdateNotificationPreferencesInput!) {
+    updateNotificationPreferences(input: $input) {
+      id
+      streakEnabled
+      budgetEnabled
+      priceAlertsEnabled
+      portfolioEvtEnabled
+      educationalEnabled
+      quietHoursStart
+      quietHoursEnd
+      dailyCap
+    }
+  }
+`;
+export type UpdateNotificationPreferencesMutationFn = Apollo.MutationFunction<
+  UpdateNotificationPreferencesMutation,
+  UpdateNotificationPreferencesMutationVariables
+>;
+
+/**
+ * __useUpdateNotificationPreferencesMutation__
+ *
+ * To run a mutation, you first call `useUpdateNotificationPreferencesMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUpdateNotificationPreferencesMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [updateNotificationPreferencesMutation, { data, loading, error }] = useUpdateNotificationPreferencesMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useUpdateNotificationPreferencesMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    UpdateNotificationPreferencesMutation,
+    UpdateNotificationPreferencesMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    UpdateNotificationPreferencesMutation,
+    UpdateNotificationPreferencesMutationVariables
+  >(UpdateNotificationPreferencesDocument, options);
+}
+export type UpdateNotificationPreferencesMutationHookResult = ReturnType<
+  typeof useUpdateNotificationPreferencesMutation
+>;
+export type UpdateNotificationPreferencesMutationResult =
+  Apollo.MutationResult<UpdateNotificationPreferencesMutation>;
+export type UpdateNotificationPreferencesMutationOptions = Apollo.BaseMutationOptions<
+  UpdateNotificationPreferencesMutation,
+  UpdateNotificationPreferencesMutationVariables
+>;
 export const StockDetailDocument = gql`
   query StockDetail($symbol: String!) {
     stock(symbol: $symbol) {
@@ -1575,6 +1996,7 @@ export const OrderHistoryDocument = gql`
       orderValue
       realizedPnl
       status
+      correlationId
       executedAt
     }
   }

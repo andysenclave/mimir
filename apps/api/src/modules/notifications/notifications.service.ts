@@ -1,4 +1,4 @@
-// MM-018 — registerPushDevice service. Idempotent on (userId, expoPushToken):
+// MM-018 — registerPushDevice service. MM-041 — notificationPreferences + updateNotificationPreferences.
 // re-registering returns the existing UserDevice. Updates appVersion + lastSeenAt
 // on every call so we have fresh fingerprints for stale-token cleanup later.
 
@@ -78,4 +78,62 @@ export class NotificationsService {
       registeredAt: row.createdAt.toISOString(),
     };
   }
+
+  // ─── MM-041 — Notification preferences ────────────────────────────────────
+
+  async getNotificationPreferences(userId: string): Promise<NotificationPrefsRow> {
+    const existing = await this.prisma.notificationPreferences.findUnique({
+      where: { userId },
+    });
+    if (existing) return existing;
+    // Auto-create with defaults on first access.
+    return this.prisma.notificationPreferences.create({ data: { userId } });
+  }
+
+  async updateNotificationPreferences(
+    userId: string,
+    input: NotificationPrefsUpdate,
+  ): Promise<NotificationPrefsRow> {
+    const { streakEnabled, budgetEnabled, priceAlertsEnabled, portfolioEvtEnabled, educationalEnabled, quietHoursStart, quietHoursEnd, dailyCap } = input;
+
+    return this.prisma.notificationPreferences.upsert({
+      where: { userId },
+      create: {
+        userId,
+        ...(streakEnabled !== undefined && { streakEnabled }),
+        ...(budgetEnabled !== undefined && { budgetEnabled }),
+        ...(priceAlertsEnabled !== undefined && { priceAlertsEnabled }),
+        ...(portfolioEvtEnabled !== undefined && { portfolioEvtEnabled }),
+        ...(educationalEnabled !== undefined && { educationalEnabled }),
+        ...(quietHoursStart !== undefined && { quietHoursStart }),
+        ...(quietHoursEnd !== undefined && { quietHoursEnd }),
+        ...(dailyCap !== undefined && { dailyCap }),
+      },
+      update: {
+        ...(streakEnabled !== undefined && { streakEnabled }),
+        ...(budgetEnabled !== undefined && { budgetEnabled }),
+        ...(priceAlertsEnabled !== undefined && { priceAlertsEnabled }),
+        ...(portfolioEvtEnabled !== undefined && { portfolioEvtEnabled }),
+        ...(educationalEnabled !== undefined && { educationalEnabled }),
+        ...(quietHoursStart !== undefined && { quietHoursStart }),
+        ...(quietHoursEnd !== undefined && { quietHoursEnd }),
+        ...(dailyCap !== undefined && { dailyCap }),
+      },
+    });
+  }
 }
+
+// Local type aliases to keep the method signatures readable without needing a
+// Prisma import in test mocks (they just need to match the shape).
+type NotificationPrefsRow = {
+  id: string;
+  streakEnabled: boolean;
+  budgetEnabled: boolean;
+  priceAlertsEnabled: boolean;
+  portfolioEvtEnabled: boolean;
+  educationalEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  dailyCap: number;
+};
+type NotificationPrefsUpdate = Partial<Omit<NotificationPrefsRow, 'id'>>;
