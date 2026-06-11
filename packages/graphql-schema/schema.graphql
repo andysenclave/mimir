@@ -19,6 +19,10 @@ type AuthUser {
   onboardingDone: Boolean!
 }
 
+input CompleteLessonInput {
+  lessonId: ID!
+}
+
 input CompleteOnboardingInput {
   ageAttested: Boolean!
 
@@ -28,6 +32,31 @@ input CompleteOnboardingInput {
   """Required when budgetTierId === CUSTOM"""
   customAmount: Int
   termsAccepted: Boolean!
+}
+
+type Concept {
+  body: String!
+  id: ID!
+  orderIndex: Int!
+  title: String!
+}
+
+type Course {
+  description: String!
+  difficulty: String!
+  id: ID!
+  lessons: [Lesson!]!
+  orderIndex: Int!
+  progress: CourseProgress
+  title: String!
+  totalTimeMin: Int!
+}
+
+type CourseProgress {
+  completedAt: String
+  courseId: String!
+  id: ID!
+  lessonsComplete: Int!
 }
 
 """
@@ -58,6 +87,16 @@ type IntradayPoint {
 
   """Unix timestamp in milliseconds."""
   timestamp: Float!
+}
+
+type Lesson {
+  completed: Boolean!
+  content: String!
+  courseId: String!
+  id: ID!
+  orderIndex: Int!
+  readTimeMin: Int!
+  title: String!
 }
 
 type MarketOverviewGql {
@@ -95,6 +134,9 @@ type Mutation {
   Add a stock to the authenticated user's watchlist. Idempotent if already present. Throws WATCHLIST_LIMIT if the watchlist already has 50 entries.
   """
   addToWatchlist(symbol: String!): WatchlistItemGql!
+
+  """Mark a lesson as complete. Idempotent — re-calling has no effect."""
+  completeLesson(input: CompleteLessonInput!): CourseProgress!
 
   """
   Complete onboarding by setting the monthly budget tier. Creates the first ACTIVE MonthlyBudget and flips User.onboardingDone. Idempotent.
@@ -307,6 +349,12 @@ type Query {
   """
   aiInsight(symbol: String!): AIInsightGql
 
+  """Single course with lessons and user progress."""
+  course(id: ID!): Course!
+
+  """All courses with user progress."""
+  courses: [Course!]!
+
   """Current market overview: indices, sectors, top movers."""
   marketOverview: MarketOverviewGql!
 
@@ -343,6 +391,9 @@ type Query {
   Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed.
   """
   stockIntraday(symbol: String!): [IntradayPoint!]!
+
+  """Today's concept — deterministic daily rotation."""
+  todaysConcept: Concept!
 }
 
 input RegisterPushDeviceInput {

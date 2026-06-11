@@ -5,10 +5,12 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { NotificationCategory } from '@prisma/client';
-import type { Job } from 'bullmq';
+
 
 import { NotificationDispatchService } from '../modules/notifications/notification-dispatch.service';
 import { orderFillTemplate } from '../modules/notifications/templates/order-fill';
+
+import type { Job } from 'bullmq';
 
 export const ORDER_FILL_QUEUE = 'order-fill-notification';
 export const ORDER_FILL_JOB = 'send-order-fill-notification';

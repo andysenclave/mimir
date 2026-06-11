@@ -11,13 +11,15 @@
 
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { NotificationCategory } from '@prisma/client';
-import type { Redis } from 'ioredis';
 
-import { PrismaService } from '../prisma/prisma.service';
-import { REDIS_CLIENT } from '../redis/redis.module';
+
 import { STOCK_TICK_CHANNEL } from '../modules/market/market.service';
 import { NotificationDispatchService } from '../modules/notifications/notification-dispatch.service';
 import { priceAlertTemplate } from '../modules/notifications/templates/price-alert';
+import { PrismaService } from '../prisma/prisma.service';
+import { REDIS_CLIENT } from '../redis/redis.module';
+
+import type { Redis } from 'ioredis';
 
 const ALERT_THROTTLE_TTL_SEC = 3600; // 1 hour
 const ALERT_THRESHOLD_PCT = 3.0;     // ±3% from previous close

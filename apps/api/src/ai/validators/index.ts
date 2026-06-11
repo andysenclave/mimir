@@ -3,8 +3,8 @@
 // for unit tests and future custom pipelines.
 
 import { checkBannedWords } from './banned-words';
-import { checkLength } from './length';
 import { checkAnchors } from './hallucination';
+import { checkLength } from './length';
 
 export { checkBannedWords } from './banned-words';
 export { checkLength } from './length';

@@ -8,9 +8,10 @@ import { Args, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser, type AuthUser } from '../common/decorators/current-user.decorator';
 import { LocalAuthGuard } from '../modules/auth/auth.guard';
-import { AIInsightGql } from './entities/ai-insight.entity';
-import { AIService } from './ai.service';
 import { PostHogService } from '../observability/posthog.service';
+
+import { AIService } from './ai.service';
+import { AIInsightGql } from './entities/ai-insight.entity';
 
 @Resolver()
 @UseGuards(LocalAuthGuard)

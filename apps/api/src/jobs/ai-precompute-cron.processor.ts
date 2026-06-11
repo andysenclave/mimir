@@ -3,11 +3,11 @@
 // Runs sequentially to respect Anthropic rate limits — not parallel.
 // Cost ceiling: ~$0.30/day for 100 stocks × ~$0.003 per call.
 
+import { TOP_100_NSE_SYMBOLS } from '@mimir/shared';
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 
-import { TOP_100_NSE_SYMBOLS } from '@mimir/shared';
 import { AIService } from '../ai/ai.service';
 import { PostHogService } from '../observability/posthog.service';
 

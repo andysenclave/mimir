@@ -1,0 +1,64 @@
+query Courses {
+  courses {
+    id
+    title
+    description
+    difficulty
+    totalTimeMin
+    orderIndex
+    progress {
+      id
+      lessonsComplete
+      completedAt
+    }
+    lessons {
+      id
+      title
+      orderIndex
+      readTimeMin
+      completed
+    }
+  }
+}
+
+query CourseDetail($id: ID!) {
+  course(id: $id) {
+    id
+    title
+    description
+    difficulty
+    totalTimeMin
+    orderIndex
+    progress {
+      id
+      lessonsComplete
+      completedAt
+    }
+    lessons {
+      id
+      title
+      orderIndex
+      readTimeMin
+      completed
+      content
+    }
+  }
+}
+
+query TodaysConcept {
+  todaysConcept {
+    id
+    title
+    body
+    orderIndex
+  }
+}
+
+mutation CompleteLesson($input: CompleteLessonInput!) {
+  completeLesson(input: $input) {
+    id
+    courseId
+    lessonsComplete
+    completedAt
+  }
+}

@@ -42,6 +42,11 @@ export type AuthUser = {
   onboardingDone: Scalars['Boolean']['output'];
 };
 
+/** Input for marking a lesson complete. */
+export type CompleteLessonInput = {
+  lessonId: Scalars['ID']['input'];
+};
+
 export type CompleteOnboardingInput = {
   ageAttested: Scalars['Boolean']['input'];
   /** TIER_10K | TIER_25K | TIER_50K | TIER_1L | CUSTOM */
@@ -49,6 +54,37 @@ export type CompleteOnboardingInput = {
   /** Required when budgetTierId === CUSTOM */
   customAmount?: InputMaybe<Scalars['Int']['input']>;
   termsAccepted: Scalars['Boolean']['input'];
+};
+
+/** Today's daily concept — one per day, deterministic rotation. */
+export type Concept = {
+  __typename?: 'Concept';
+  body: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  orderIndex: Scalars['Int']['output'];
+  title: Scalars['String']['output'];
+};
+
+/** A learning course with lessons and user progress. */
+export type Course = {
+  __typename?: 'Course';
+  description: Scalars['String']['output'];
+  difficulty: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  lessons: Array<Lesson>;
+  orderIndex: Scalars['Int']['output'];
+  progress: Maybe<CourseProgress>;
+  title: Scalars['String']['output'];
+  totalTimeMin: Scalars['Int']['output'];
+};
+
+/** User's progress through a course. */
+export type CourseProgress = {
+  __typename?: 'CourseProgress';
+  completedAt: Maybe<Scalars['String']['output']>;
+  courseId: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  lessonsComplete: Scalars['Int']['output'];
 };
 
 export type EquityPoint = {
@@ -75,6 +111,18 @@ export type IntradayPoint = {
   price: Scalars['Float']['output'];
   /** Unix timestamp in milliseconds. */
   timestamp: Scalars['Float']['output'];
+};
+
+/** A single lesson within a course. */
+export type Lesson = {
+  __typename?: 'Lesson';
+  completed: Scalars['Boolean']['output'];
+  content: Scalars['String']['output'];
+  courseId: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  orderIndex: Scalars['Int']['output'];
+  readTimeMin: Scalars['Int']['output'];
+  title: Scalars['String']['output'];
 };
 
 export type MarketOverviewGql = {
@@ -108,6 +156,8 @@ export type Mutation = {
   __typename?: 'Mutation';
   /** Add a stock to the authenticated user's watchlist. Idempotent if already present. Throws WATCHLIST_LIMIT if the watchlist already has 50 entries. */
   addToWatchlist: WatchlistItemGql;
+  /** Mark a lesson as complete. Idempotent — re-calling has no effect. */
+  completeLesson: CourseProgress;
   /** Complete onboarding by setting the monthly budget tier. Creates the first ACTIVE MonthlyBudget and flips User.onboardingDone. Idempotent. */
   completeOnboarding: OnboardingResult;
   /** Place a simulated market order (BUY or SELL). Idempotent: submitting the same clientGeneratedOrderId returns the existing order. Atomic: Order, Holding, and MonthlyBudget update in a single transaction. */
@@ -126,6 +176,10 @@ export type Mutation = {
 
 export type MutationAddToWatchlistArgs = {
   symbol: Scalars['String']['input'];
+};
+
+export type MutationCompleteLessonArgs = {
+  input: CompleteLessonInput;
 };
 
 export type MutationCompleteOnboardingArgs = {
@@ -304,6 +358,10 @@ export type Query = {
   __typename?: 'Query';
   /** AI-generated educational context for a stock. Returns null when the feature flag is off, quota is exhausted, or insight generation failed. Mobile hides the section on null. */
   aiInsight: Maybe<AiInsightGql>;
+  /** Single course with lessons and user progress. */
+  course: Course;
+  /** All courses with user progress. */
+  courses: Array<Course>;
   /** Current market overview: indices, sectors, top movers. */
   marketOverview: MarketOverviewGql;
   /** The currently authenticated user. Requires a valid JWT. */
@@ -322,10 +380,16 @@ export type Query = {
   stock: Maybe<StockQuoteGql>;
   /** Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed. */
   stockIntraday: Array<IntradayPoint>;
+  /** Today's concept — deterministic daily rotation. */
+  todaysConcept: Concept;
 };
 
 export type QueryAiInsightArgs = {
   symbol: Scalars['String']['input'];
+};
+
+export type QueryCourseArgs = {
+  id: Scalars['ID']['input'];
 };
 
 export type QueryOrderHistoryArgs = {
@@ -434,6 +498,95 @@ export type WatchlistItemGql = {
   changePct: Maybe<Scalars['Float']['output']>;
   ltp: Maybe<Scalars['Float']['output']>;
   symbol: Scalars['ID']['output'];
+};
+
+export type CoursesQueryVariables = Exact<{ [key: string]: never }>;
+
+export type CoursesQuery = {
+  __typename?: 'Query';
+  courses: Array<{
+    __typename?: 'Course';
+    id: string;
+    title: string;
+    description: string;
+    difficulty: string;
+    totalTimeMin: number;
+    orderIndex: number;
+    progress: {
+      __typename?: 'CourseProgress';
+      id: string;
+      lessonsComplete: number;
+      completedAt: string | null;
+    } | null;
+    lessons: Array<{
+      __typename?: 'Lesson';
+      id: string;
+      title: string;
+      orderIndex: number;
+      readTimeMin: number;
+      completed: boolean;
+    }>;
+  }>;
+};
+
+export type CourseDetailQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+export type CourseDetailQuery = {
+  __typename?: 'Query';
+  course: {
+    __typename?: 'Course';
+    id: string;
+    title: string;
+    description: string;
+    difficulty: string;
+    totalTimeMin: number;
+    orderIndex: number;
+    progress: {
+      __typename?: 'CourseProgress';
+      id: string;
+      lessonsComplete: number;
+      completedAt: string | null;
+    } | null;
+    lessons: Array<{
+      __typename?: 'Lesson';
+      id: string;
+      title: string;
+      orderIndex: number;
+      readTimeMin: number;
+      completed: boolean;
+      content: string;
+    }>;
+  };
+};
+
+export type TodaysConceptQueryVariables = Exact<{ [key: string]: never }>;
+
+export type TodaysConceptQuery = {
+  __typename?: 'Query';
+  todaysConcept: {
+    __typename?: 'Concept';
+    id: string;
+    title: string;
+    body: string;
+    orderIndex: number;
+  };
+};
+
+export type CompleteLessonMutationVariables = Exact<{
+  input: CompleteLessonInput;
+}>;
+
+export type CompleteLessonMutation = {
+  __typename?: 'Mutation';
+  completeLesson: {
+    __typename?: 'CourseProgress';
+    id: string;
+    courseId: string;
+    lessonsComplete: number;
+    completedAt: string | null;
+  };
 };
 
 export type MarketOverviewQueryVariables = Exact<{ [key: string]: never }>;
@@ -810,6 +963,288 @@ export type PlaceOrderMutation = {
   };
 };
 
+export const CoursesDocument = gql`
+  query Courses {
+    courses {
+      id
+      title
+      description
+      difficulty
+      totalTimeMin
+      orderIndex
+      progress {
+        id
+        lessonsComplete
+        completedAt
+      }
+      lessons {
+        id
+        title
+        orderIndex
+        readTimeMin
+        completed
+      }
+    }
+  }
+`;
+
+/**
+ * __useCoursesQuery__
+ *
+ * To run a query within a React component, call `useCoursesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useCoursesQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useCoursesQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useCoursesQuery(
+  baseOptions?: Apollo.QueryHookOptions<CoursesQuery, CoursesQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<CoursesQuery, CoursesQueryVariables>(CoursesDocument, options);
+}
+export function useCoursesLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<CoursesQuery, CoursesQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<CoursesQuery, CoursesQueryVariables>(CoursesDocument, options);
+}
+// @ts-ignore
+export function useCoursesSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<CoursesQuery, CoursesQueryVariables>,
+): Apollo.UseSuspenseQueryResult<CoursesQuery, CoursesQueryVariables>;
+export function useCoursesSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<CoursesQuery, CoursesQueryVariables>,
+): Apollo.UseSuspenseQueryResult<CoursesQuery | undefined, CoursesQueryVariables>;
+export function useCoursesSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<CoursesQuery, CoursesQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<CoursesQuery, CoursesQueryVariables>(CoursesDocument, options);
+}
+export type CoursesQueryHookResult = ReturnType<typeof useCoursesQuery>;
+export type CoursesLazyQueryHookResult = ReturnType<typeof useCoursesLazyQuery>;
+export type CoursesSuspenseQueryHookResult = ReturnType<typeof useCoursesSuspenseQuery>;
+export type CoursesQueryResult = Apollo.QueryResult<CoursesQuery, CoursesQueryVariables>;
+export const CourseDetailDocument = gql`
+  query CourseDetail($id: ID!) {
+    course(id: $id) {
+      id
+      title
+      description
+      difficulty
+      totalTimeMin
+      orderIndex
+      progress {
+        id
+        lessonsComplete
+        completedAt
+      }
+      lessons {
+        id
+        title
+        orderIndex
+        readTimeMin
+        completed
+        content
+      }
+    }
+  }
+`;
+
+/**
+ * __useCourseDetailQuery__
+ *
+ * To run a query within a React component, call `useCourseDetailQuery` and pass it any options that fit your needs.
+ * When your component renders, `useCourseDetailQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useCourseDetailQuery({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useCourseDetailQuery(
+  baseOptions: Apollo.QueryHookOptions<CourseDetailQuery, CourseDetailQueryVariables> &
+    ({ variables: CourseDetailQueryVariables; skip?: boolean } | { skip: boolean }),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<CourseDetailQuery, CourseDetailQueryVariables>(
+    CourseDetailDocument,
+    options,
+  );
+}
+export function useCourseDetailLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<CourseDetailQuery, CourseDetailQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<CourseDetailQuery, CourseDetailQueryVariables>(
+    CourseDetailDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useCourseDetailSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<CourseDetailQuery, CourseDetailQueryVariables>,
+): Apollo.UseSuspenseQueryResult<CourseDetailQuery, CourseDetailQueryVariables>;
+export function useCourseDetailSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<CourseDetailQuery, CourseDetailQueryVariables>,
+): Apollo.UseSuspenseQueryResult<CourseDetailQuery | undefined, CourseDetailQueryVariables>;
+export function useCourseDetailSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<CourseDetailQuery, CourseDetailQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<CourseDetailQuery, CourseDetailQueryVariables>(
+    CourseDetailDocument,
+    options,
+  );
+}
+export type CourseDetailQueryHookResult = ReturnType<typeof useCourseDetailQuery>;
+export type CourseDetailLazyQueryHookResult = ReturnType<typeof useCourseDetailLazyQuery>;
+export type CourseDetailSuspenseQueryHookResult = ReturnType<typeof useCourseDetailSuspenseQuery>;
+export type CourseDetailQueryResult = Apollo.QueryResult<
+  CourseDetailQuery,
+  CourseDetailQueryVariables
+>;
+export const TodaysConceptDocument = gql`
+  query TodaysConcept {
+    todaysConcept {
+      id
+      title
+      body
+      orderIndex
+    }
+  }
+`;
+
+/**
+ * __useTodaysConceptQuery__
+ *
+ * To run a query within a React component, call `useTodaysConceptQuery` and pass it any options that fit your needs.
+ * When your component renders, `useTodaysConceptQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useTodaysConceptQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useTodaysConceptQuery(
+  baseOptions?: Apollo.QueryHookOptions<TodaysConceptQuery, TodaysConceptQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<TodaysConceptQuery, TodaysConceptQueryVariables>(
+    TodaysConceptDocument,
+    options,
+  );
+}
+export function useTodaysConceptLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<TodaysConceptQuery, TodaysConceptQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<TodaysConceptQuery, TodaysConceptQueryVariables>(
+    TodaysConceptDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useTodaysConceptSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<TodaysConceptQuery, TodaysConceptQueryVariables>,
+): Apollo.UseSuspenseQueryResult<TodaysConceptQuery, TodaysConceptQueryVariables>;
+export function useTodaysConceptSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<TodaysConceptQuery, TodaysConceptQueryVariables>,
+): Apollo.UseSuspenseQueryResult<TodaysConceptQuery | undefined, TodaysConceptQueryVariables>;
+export function useTodaysConceptSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<TodaysConceptQuery, TodaysConceptQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<TodaysConceptQuery, TodaysConceptQueryVariables>(
+    TodaysConceptDocument,
+    options,
+  );
+}
+export type TodaysConceptQueryHookResult = ReturnType<typeof useTodaysConceptQuery>;
+export type TodaysConceptLazyQueryHookResult = ReturnType<typeof useTodaysConceptLazyQuery>;
+export type TodaysConceptSuspenseQueryHookResult = ReturnType<typeof useTodaysConceptSuspenseQuery>;
+export type TodaysConceptQueryResult = Apollo.QueryResult<
+  TodaysConceptQuery,
+  TodaysConceptQueryVariables
+>;
+export const CompleteLessonDocument = gql`
+  mutation CompleteLesson($input: CompleteLessonInput!) {
+    completeLesson(input: $input) {
+      id
+      courseId
+      lessonsComplete
+      completedAt
+    }
+  }
+`;
+export type CompleteLessonMutationFn = Apollo.MutationFunction<
+  CompleteLessonMutation,
+  CompleteLessonMutationVariables
+>;
+
+/**
+ * __useCompleteLessonMutation__
+ *
+ * To run a mutation, you first call `useCompleteLessonMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useCompleteLessonMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [completeLessonMutation, { data, loading, error }] = useCompleteLessonMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useCompleteLessonMutation(
+  baseOptions?: Apollo.MutationHookOptions<CompleteLessonMutation, CompleteLessonMutationVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<CompleteLessonMutation, CompleteLessonMutationVariables>(
+    CompleteLessonDocument,
+    options,
+  );
+}
+export type CompleteLessonMutationHookResult = ReturnType<typeof useCompleteLessonMutation>;
+export type CompleteLessonMutationResult = Apollo.MutationResult<CompleteLessonMutation>;
+export type CompleteLessonMutationOptions = Apollo.BaseMutationOptions<
+  CompleteLessonMutation,
+  CompleteLessonMutationVariables
+>;
 export const MarketOverviewDocument = gql`
   query MarketOverview {
     marketOverview {

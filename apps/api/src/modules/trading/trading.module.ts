@@ -7,6 +7,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
+import { ORDER_FILL_QUEUE } from '../../jobs/order-fill-notification.processor';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PubSubModule, PUB_SUB } from '../../pubsub/pubsub.module';
 import { MarketModule } from '../market/market.module';
@@ -14,7 +15,6 @@ import { MarketModule } from '../market/market.module';
 import { BudgetRolloverProcessor, BUDGET_ROLLOVER_QUEUE } from './processors/budget-rollover.processor';
 import { TradingResolver } from './trading.resolver';
 import { TradingService, TRADING_REDIS, TRADING_PUB_SUB } from './trading.service';
-import { ORDER_FILL_QUEUE } from '../../jobs/order-fill-notification.processor';
 
 @Module({
   imports: [

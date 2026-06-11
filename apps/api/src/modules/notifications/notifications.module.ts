@@ -5,22 +5,22 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
-import { AuthModule } from '../auth/auth.module';
-import { PrismaModule } from '../../prisma/prisma.module';
-import { ObservabilityModule } from '../../observability/observability.module';
 import {
   BudgetNudgeProcessor,
   BUDGET_NUDGE_QUEUE,
 } from '../../jobs/budget-nudge.processor';
 import {
-  PortfolioEventsProcessor,
-  PORTFOLIO_EVENTS_QUEUE,
-} from '../../jobs/portfolio-events.processor';
-import {
   OrderFillNotificationProcessor,
   ORDER_FILL_QUEUE,
 } from '../../jobs/order-fill-notification.processor';
+import {
+  PortfolioEventsProcessor,
+  PORTFOLIO_EVENTS_QUEUE,
+} from '../../jobs/portfolio-events.processor';
 import { PriceAlertsProcessor } from '../../jobs/price-alerts.processor';
+import { ObservabilityModule } from '../../observability/observability.module';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { AuthModule } from '../auth/auth.module';
 
 import { NotificationDispatchService } from './notification-dispatch.service';
 import { NotificationsResolver } from './notifications.resolver';

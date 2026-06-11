@@ -24,11 +24,9 @@
 // Prompt 29 (trading-domain-rules): locked validation chain order must not change.
 
 import { placeOrderInputSchema } from '@mimir/shared';
-import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { Queue } from 'bullmq';
-import { ORDER_FILL_QUEUE, ORDER_FILL_JOB, type OrderFillJobData } from '../../jobs/order-fill-notification.processor';
 
 import {
   InsufficientBudgetException,
@@ -38,21 +36,23 @@ import {
   OrderRateLimitException,
   TopUpExceedsTierMaxException,
 } from '../../common/exceptions/trading.exceptions';
+import { ORDER_FILL_QUEUE, ORDER_FILL_JOB, type OrderFillJobData } from '../../jobs/order-fill-notification.processor';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StockPriceUpdate } from '../market/entities/stock-price-update.entity';
 import { STOCK_TICK_CHANNEL } from '../market/market.service';
 import { MarketDataProvider } from '../market/providers/market-data-provider.interface';
-import { StockPriceUpdate } from '../market/entities/stock-price-update.entity';
 
 import { PlaceOrderInput } from './dto/place-order.input';
 import { TopupBudgetInput } from './dto/topup-budget.input';
+import { EquityPointGql } from './entities/equity-point.entity';
 import { MonthlyBudgetGql } from './entities/monthly-budget.entity';
 import { OrderGql } from './entities/order.entity';
-import { PortfolioGql } from './entities/portfolio.entity';
 import { PortfolioHoldingGql } from './entities/portfolio-holding.entity';
 import { PortfolioPerformanceGql } from './entities/portfolio-performance.entity';
 import { PortfolioUpdateGql } from './entities/portfolio-update.entity';
-import { EquityPointGql } from './entities/equity-point.entity';
+import { PortfolioGql } from './entities/portfolio.entity';
 
+import type { Queue } from 'bullmq';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 import type { Redis } from 'ioredis';
 

@@ -1,12 +1,12 @@
 // MM-013 — me service. Replaces the MM-006 hardcoded resolver with a real
 // Prisma fetch keyed off the @CurrentUser id.
 
+import { BUDGET_TIERS, type BudgetTierId } from '@mimir/shared';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { WatchlistLimitException, WatchlistItemNotFoundException } from '../common/exceptions/watchlist.exceptions';
 
+import { WatchlistLimitException, WatchlistItemNotFoundException } from '../common/exceptions/watchlist.exceptions';
 import { PrismaService } from '../prisma/prisma.service';
 
-import { BUDGET_TIERS, type BudgetTierId } from '@mimir/shared';
 import type { AuthUser } from './entities/auth-user.entity';
 import type { UserProfileGql, WatchlistItemGql } from './entities/profile.entity';
 

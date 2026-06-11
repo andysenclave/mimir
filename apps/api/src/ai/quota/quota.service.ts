@@ -5,8 +5,9 @@
 
 import { Injectable, Inject } from '@nestjs/common';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from '../../redis/redis.module';
+
 import { AIQuotaExceededException } from '../../common/exceptions/ai.exceptions';
+import { REDIS_CLIENT } from '../../redis/redis.module';
 
 const SOFT_CAP = 5;
 const HARD_CAP = 20;

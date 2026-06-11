@@ -1,9 +1,10 @@
 // InvestContent — assembles all invest screen sub-sections (prompt 20, SRP).
 // Data is provided by useInvestScreen; this component is pure layout.
 
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { useSheet } from '@/features/sheets/SheetProvider';
+import { SoftPrompt } from '@/features/notifications/SoftPrompt';
 import { StockHeader } from './StockHeader';
 import { LivePriceTicker } from './LivePriceTicker';
 import { MiniChart } from './MiniChart';
@@ -17,7 +18,22 @@ interface InvestContentProps {
 
 export function InvestContent({ result }: InvestContentProps): React.JSX.Element {
   const { openSheet } = useSheet();
-  const { stock, intradayPoints, holding, cashRemaining, side, quantity, setSide, setQuantity, submitting, handleSubmit } = result;
+  const {
+    stock,
+    intradayPoints,
+    holding,
+    cashRemaining,
+    side,
+    quantity,
+    setSide,
+    setQuantity,
+    submitting,
+    handleSubmit,
+    softPromptVisible,
+    softPromptSymbol,
+    onSoftPromptAccept,
+    onSoftPromptDefer,
+  } = result;
 
   function onFormSubmit(): void {
     if (!stock) return;
@@ -51,18 +67,28 @@ export function InvestContent({ result }: InvestContentProps): React.JSX.Element
           positive={(stock?.changePct ?? 0) >= 0}
         />
         <AIInsightCard symbol={stock?.symbol ?? ''} />
-        <OrderForm
-          symbol={stock?.symbol ?? ''}
-          ltp={stock?.ltp ?? 0}
-          cashRemaining={cashRemaining}
-          holding={holding ? { quantity: holding.quantity, avgBuyPrice: holding.avgBuyPrice } : null}
-          side={side}
-          quantity={quantity}
-          onSideChange={setSide}
-          onQuantityChange={setQuantity}
-          onSubmit={onFormSubmit}
-          loading={submitting}
-        />
+        {softPromptVisible ? (
+          <View className="mx-4 mt-4">
+            <SoftPrompt
+              primaryStockSymbol={softPromptSymbol}
+              onAccept={() => void onSoftPromptAccept()}
+              onDefer={onSoftPromptDefer}
+            />
+          </View>
+        ) : (
+          <OrderForm
+            symbol={stock?.symbol ?? ''}
+            ltp={stock?.ltp ?? 0}
+            cashRemaining={cashRemaining}
+            holding={holding ? { quantity: holding.quantity, avgBuyPrice: holding.avgBuyPrice } : null}
+            side={side}
+            quantity={quantity}
+            onSideChange={setSide}
+            onQuantityChange={setQuantity}
+            onSubmit={onFormSubmit}
+            loading={submitting}
+          />
+        )}
       </ScrollView>
     </ScreenContainer>
   );

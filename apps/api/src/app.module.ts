@@ -4,13 +4,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 
+import { AIModule } from './ai';
 import { envSchema } from './config/env.schema';
 import { graphqlConfigFactory } from './graphql/graphql-config.factory';
 import { HealthModule } from './health/health.module';
 import { HeartbeatModule } from './heartbeat/heartbeat.module';
 import { MeModule } from './me/me.module';
-import { AIModule } from './ai';
 import { AuthModule } from './modules/auth/auth.module';
+import { LearningModule } from './modules/learning';
 import { MarketModule } from './modules/market';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
@@ -72,6 +73,7 @@ import { RedisModule } from './redis/redis.module';
     MarketModule,        // MM-021 — MarketDataPoller + MarketSnapshot
     TradingModule,       // MM-025 — portfolioPerformance query (orders + holdings in MM-026)
     AIModule,            // MM-032 — AI Insights pipeline (Haiku)
+    LearningModule,      // MM-046 — courses, lessons, todaysConcept, completeLesson
   ],
 })
 export class AppModule {}

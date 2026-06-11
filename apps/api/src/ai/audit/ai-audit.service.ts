@@ -2,6 +2,7 @@
 // Retention: 1 year, then hard-deleted.
 
 import { Injectable, Logger } from '@nestjs/common';
+
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface AuditLogEntry {

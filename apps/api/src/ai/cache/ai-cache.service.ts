@@ -4,6 +4,7 @@
 
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import Redis from 'ioredis';
+
 import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 

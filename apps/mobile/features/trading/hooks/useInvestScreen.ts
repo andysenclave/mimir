@@ -4,8 +4,7 @@
 // Prompt 21 (api-client): codegen hooks only.
 
 import { isMarketOpen, uuidv4 } from '@mimir/shared';
-import { router } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 import {
   useStockDetailQuery,
@@ -16,6 +15,8 @@ import {
   type StockIntradayQuery,
   type PortfolioQuery,
 } from '@/graphql/generated';
+import { useSoftPromptFlow } from '@/features/notifications/useSoftPromptFlow';
+import { useAnalytics } from '@/lib/analytics/use-analytics';
 
 
 export type StockData = NonNullable<StockDetailQuery['stock']>;
@@ -37,6 +38,11 @@ export interface UseInvestScreenResult {
 
   submitting: boolean;
   handleSubmit: () => Promise<void>;
+
+  softPromptVisible: boolean;
+  softPromptSymbol: string;
+  onSoftPromptAccept: () => Promise<void>;
+  onSoftPromptDefer: () => void;
 }
 
 export function useInvestScreen(
@@ -64,9 +70,9 @@ export function useInvestScreen(
     skip: !isOpen,
     onData: ({ data: subData }) => {
       const tick = subData.data?.stockPrice;
-      
+
       if (tick?.symbol !== symbol) return;
-      
+
       const cacheId = client.cache.identify({ __typename: 'StockQuoteGql', symbol });
       if (!cacheId) return;
       client.cache.modify({
@@ -87,7 +93,12 @@ export function useInvestScreen(
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
+  // Track whether this is the user's first-ever trade for the PostHog funnel.
+  const isFirstTradeRef = useRef<boolean>(!portfolioData || portfolioData.holdings.length === 0);
+
   const [placeOrder] = usePlaceOrderMutation();
+  const { track } = useAnalytics();
+  const softPrompt = useSoftPromptFlow();
 
   const handleSubmit = useCallback(async () => {
     const ltp = data?.stock?.ltp;
@@ -109,11 +120,14 @@ export function useInvestScreen(
         },
         refetchQueries: ['Portfolio'],
       });
-      router.replace('/(tabs)/portfolio');
+      track({ name: 'order_placed', props: { symbol, type: side, quantity } });
+      // triggerAfterTrade handles the first_trade event + soft prompt check +
+      // navigation to portfolio. Navigation is deferred until soft prompt resolves.
+      await softPrompt.triggerAfterTrade(symbol, isFirstTradeRef.current);
     } finally {
       setSubmitting(false);
     }
-  }, [data?.stock?.ltp, placeOrder, symbol, side, quantity]);
+  }, [data?.stock?.ltp, placeOrder, symbol, side, quantity, track, softPrompt]);
 
   return {
     stock: data?.stock,
@@ -128,5 +142,9 @@ export function useInvestScreen(
     setQuantity,
     submitting,
     handleSubmit,
+    softPromptVisible: softPrompt.visible,
+    softPromptSymbol: softPrompt.promptSymbol,
+    onSoftPromptAccept: softPrompt.onAccept,
+    onSoftPromptDefer: softPrompt.onDefer,
   };
 }

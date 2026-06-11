@@ -10,8 +10,8 @@ import { LocalAuthGuard } from '../auth/auth.guard';
 
 import { RegisterPushDeviceInput } from './dto/register-push-device.input';
 import { UpdateNotificationPreferencesInput } from './dto/update-notification-preferences.input';
-import { UserDeviceEntity } from './entities/user-device.entity';
 import { NotificationPreferencesGql } from './entities/notification-preferences.entity';
+import { UserDeviceEntity } from './entities/user-device.entity';
 import { NotificationsService } from './notifications.service';
 
 @Resolver(() => UserDeviceEntity)

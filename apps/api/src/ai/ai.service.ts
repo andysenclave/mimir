@@ -12,22 +12,24 @@
 //   7. Persist to Postgres + Redis + audit log
 //   8. Return
 
-import { Injectable, Logger } from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { MarketService } from '../modules/market/market.service';
+
 import { AIAuditService } from './audit/ai-audit.service';
 import { AICacheService, type CachedInsight } from './cache/ai-cache.service';
-import { QuotaService } from './quota/quota.service';
-import { validateStockInsight } from './validators';
+import { type AIInsightGql } from './entities/ai-insight.entity';
 import {
   STOCK_INSIGHT_PROMPT_VERSION,
   STOCK_INSIGHT_SYSTEM_PROMPT,
   buildStockInsightUserMessage,
   type StockInsightInput,
 } from './prompts/stock-insight';
-import { type AIInsightGql } from './entities/ai-insight.entity';
+import { QuotaService } from './quota/quota.service';
+import { validateStockInsight } from './validators';
+
 import type { Env } from '../config/env.schema';
 
 const MODEL = 'claude-haiku-4-5';

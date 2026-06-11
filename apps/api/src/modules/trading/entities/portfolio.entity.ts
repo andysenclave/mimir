@@ -3,8 +3,8 @@
 
 import { Field, Float, ObjectType } from '@nestjs/graphql';
 
-import { MonthlyBudgetGql } from './monthly-budget.entity';
 import { EquityPointGql } from './equity-point.entity';
+import { MonthlyBudgetGql } from './monthly-budget.entity';
 import { PortfolioHoldingGql } from './portfolio-holding.entity';
 
 @ObjectType('Portfolio', { description: 'Full portfolio snapshot for the Portfolio screen.' })

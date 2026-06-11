@@ -7,11 +7,13 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { NotificationCategory } from '@prisma/client';
-import type { Job } from 'bullmq';
 
-import { PrismaService } from '../prisma/prisma.service';
+
 import { NotificationDispatchService } from '../modules/notifications/notification-dispatch.service';
 import { budgetNudgeTemplate } from '../modules/notifications/templates/budget-nudge';
+import { PrismaService } from '../prisma/prisma.service';
+
+import type { Job } from 'bullmq';
 
 export const BUDGET_NUDGE_QUEUE = 'budget-nudge';
 export const BUDGET_NUDGE_JOB = 'run-budget-nudge';

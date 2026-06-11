@@ -17,12 +17,13 @@ import { NotificationCategory } from '@prisma/client';
 // The package is CJS with `module.exports = Expo; module.exports.default = Expo;`
 // so we import the namespace and reach the class via .default in strict ESM.
 import * as ExpoSdk from 'expo-server-sdk';
-import type { ExpoPushMessage } from 'expo-server-sdk';
 
-import { PrismaService } from '../../prisma/prisma.service';
+
 import { PostHogService } from '../../observability/posthog.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 
+import type { ExpoPushMessage } from 'expo-server-sdk';
 import type { Redis } from 'ioredis';
 
 // Quiet-hours window and daily cap are anchored in IST.
@@ -67,6 +68,7 @@ export class NotificationDispatchService {
       const enabled = this.isCategoryEnabled(category, prefs);
       if (!enabled) {
         this.logger.debug(`dispatch skipped — category ${category} disabled for userId=${userId}`);
+        this.posthog.capture(userId, 'notification_dropped', { reason: 'pref_disabled', category });
         return;
       }
     }
@@ -76,6 +78,7 @@ export class NotificationDispatchService {
     const quietEnd = prefs?.quietHoursEnd ?? DEFAULT_QUIET_END;
     if (!isTransactional && this.isQuietHours(quietStart, quietEnd)) {
       this.logger.debug(`dispatch skipped — quiet hours (${quietStart}–${quietEnd}) for userId=${userId}`);
+      this.posthog.capture(userId, 'notification_dropped', { reason: 'quiet_hours', category });
       return;
     }
 
@@ -93,6 +96,7 @@ export class NotificationDispatchService {
         // Roll back the increment so repeated calls don't over-count.
         await this.redis.decr(capKey);
         this.logger.debug(`dispatch skipped — daily cap (${dailyCap}) reached for userId=${userId}`);
+        this.posthog.capture(userId, 'notification_dropped', { reason: 'cap_exceeded', category });
         return;
       }
     }
