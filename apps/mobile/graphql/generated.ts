@@ -34,6 +34,23 @@ export type AiInsightGql = {
   symbol: Scalars['String']['output'];
 };
 
+export type AiSuggestion = {
+  __typename?: 'AISuggestion';
+  body: Scalars['String']['output'];
+  /** "course:<courseId>" or "concept:<conceptId>" */
+  ctaLink: Scalars['String']['output'];
+  generatedAt: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  title: Scalars['String']['output'];
+};
+
+export type AnswerFeedback = {
+  __typename?: 'AnswerFeedback';
+  correctIndex: Scalars['Int']['output'];
+  explanation: Scalars['String']['output'];
+  questionId: Scalars['ID']['output'];
+};
+
 export type AuthUser = {
   __typename?: 'AuthUser';
   displayName: Maybe<Scalars['String']['output']>;
@@ -42,7 +59,6 @@ export type AuthUser = {
   onboardingDone: Scalars['Boolean']['output'];
 };
 
-/** Input for marking a lesson complete. */
 export type CompleteLessonInput = {
   lessonId: Scalars['ID']['input'];
 };
@@ -56,7 +72,6 @@ export type CompleteOnboardingInput = {
   termsAccepted: Scalars['Boolean']['input'];
 };
 
-/** Today's daily concept — one per day, deterministic rotation. */
 export type Concept = {
   __typename?: 'Concept';
   body: Scalars['String']['output'];
@@ -65,7 +80,6 @@ export type Concept = {
   title: Scalars['String']['output'];
 };
 
-/** A learning course with lessons and user progress. */
 export type Course = {
   __typename?: 'Course';
   description: Scalars['String']['output'];
@@ -78,13 +92,14 @@ export type Course = {
   totalTimeMin: Scalars['Int']['output'];
 };
 
-/** User's progress through a course. */
 export type CourseProgress = {
   __typename?: 'CourseProgress';
   completedAt: Maybe<Scalars['String']['output']>;
   courseId: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   lessonsComplete: Scalars['Int']['output'];
+  /** Best quiz score (percentage 0-100). */
+  quizScore: Maybe<Scalars['Int']['output']>;
 };
 
 export type EquityPoint = {
@@ -113,7 +128,6 @@ export type IntradayPoint = {
   timestamp: Scalars['Float']['output'];
 };
 
-/** A single lesson within a course. */
 export type Lesson = {
   __typename?: 'Lesson';
   completed: Scalars['Boolean']['output'];
@@ -166,6 +180,8 @@ export type Mutation = {
   registerPushDevice: UserDevice;
   /** Remove a stock from the authenticated user's watchlist. Idempotent — returns true even if the symbol was not present. */
   removeFromWatchlist: Scalars['Boolean']['output'];
+  /** Score a quiz server-side. Best score is kept on CourseProgress. */
+  submitQuiz: QuizResult;
   /** Enable or disable price-alert pushes for a watchlist item. */
   toggleWatchlistAlert: WatchlistItemGql;
   /** Add virtual cash to the current month's budget. Fails if the top-up would exceed the tier ceiling (budget.amount). */
@@ -196,6 +212,10 @@ export type MutationRegisterPushDeviceArgs = {
 
 export type MutationRemoveFromWatchlistArgs = {
   symbol: Scalars['String']['input'];
+};
+
+export type MutationSubmitQuizArgs = {
+  input: SubmitQuizInput;
 };
 
 export type MutationToggleWatchlistAlertArgs = {
@@ -358,6 +378,10 @@ export type Query = {
   __typename?: 'Query';
   /** AI-generated educational context for a stock. Returns null when the feature flag is off, quota is exhausted, or insight generation failed. Mobile hides the section on null. */
   aiInsight: Maybe<AiInsightGql>;
+  /** Portfolio-aware learning suggestions — 2-3 cards, regenerated at most every 24h. */
+  aiSuggestions: Array<AiSuggestion>;
+  /** Correct answer + explanation for one question, fetched after the user answers. */
+  answerFeedback: AnswerFeedback;
   /** Single course with lessons and user progress. */
   course: Course;
   /** All courses with user progress. */
@@ -376,6 +400,8 @@ export type Query = {
   portfolioPerformance: PortfolioPerformanceGql;
   /** Aggregated profile data for the Profile tab: identity, stats, top-3 watchlist. Watchlist LTP is populated from MarketSnapshot; no live prices here — mobile subscribes to stockPrice subscription for live ticks. */
   profile: UserProfileGql;
+  /** Quiz for a course. Never exposes correct answers. */
+  quiz: Quiz;
   /** Last-known snapshot for a single NSE symbol. */
   stock: Maybe<StockQuoteGql>;
   /** Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed. */
@@ -388,6 +414,10 @@ export type QueryAiInsightArgs = {
   symbol: Scalars['String']['input'];
 };
 
+export type QueryAnswerFeedbackArgs = {
+  questionId: Scalars['ID']['input'];
+};
+
 export type QueryCourseArgs = {
   id: Scalars['ID']['input'];
 };
@@ -397,12 +427,49 @@ export type QueryOrderHistoryArgs = {
   limit?: Scalars['Int']['input'];
 };
 
+export type QueryQuizArgs = {
+  courseId: Scalars['ID']['input'];
+};
+
 export type QueryStockArgs = {
   symbol: Scalars['String']['input'];
 };
 
 export type QueryStockIntradayArgs = {
   symbol: Scalars['String']['input'];
+};
+
+export type Quiz = {
+  __typename?: 'Quiz';
+  courseId: Scalars['ID']['output'];
+  /** Course title, for the quiz screen header. */
+  courseTitle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  questions: Array<QuizQuestion>;
+  title: Scalars['String']['output'];
+};
+
+export type QuizAnswerInput = {
+  questionId: Scalars['ID']['input'];
+  selectedIndex: Scalars['Int']['input'];
+};
+
+export type QuizQuestion = {
+  __typename?: 'QuizQuestion';
+  id: Scalars['ID']['output'];
+  options: Array<Scalars['String']['output']>;
+  orderIndex: Scalars['Int']['output'];
+  question: Scalars['String']['output'];
+};
+
+export type QuizResult = {
+  __typename?: 'QuizResult';
+  attemptId: Scalars['ID']['output'];
+  /** Number of correctly answered questions. */
+  correct: Scalars['Int']['output'];
+  /** Percentage score 0-100. */
+  score: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
 };
 
 export type RegisterPushDeviceInput = {
@@ -442,6 +509,11 @@ export type StockQuoteGql = {
   open: Maybe<Scalars['Float']['output']>;
   symbol: Scalars['String']['output'];
   volume: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubmitQuizInput = {
+  answers: Array<QuizAnswerInput>;
+  quizId: Scalars['ID']['input'];
 };
 
 export type Subscription = {
@@ -517,6 +589,7 @@ export type CoursesQuery = {
       id: string;
       lessonsComplete: number;
       completedAt: string | null;
+      quizScore: number | null;
     } | null;
     lessons: Array<{
       __typename?: 'Lesson';
@@ -548,6 +621,7 @@ export type CourseDetailQuery = {
       id: string;
       lessonsComplete: number;
       completedAt: string | null;
+      quizScore: number | null;
     } | null;
     lessons: Array<{
       __typename?: 'Lesson';
@@ -571,6 +645,71 @@ export type TodaysConceptQuery = {
     title: string;
     body: string;
     orderIndex: number;
+  };
+};
+
+export type AiSuggestionsQueryVariables = Exact<{ [key: string]: never }>;
+
+export type AiSuggestionsQuery = {
+  __typename?: 'Query';
+  aiSuggestions: Array<{
+    __typename?: 'AISuggestion';
+    id: string;
+    title: string;
+    body: string;
+    ctaLink: string;
+    generatedAt: string;
+  }>;
+};
+
+export type CourseQuizQueryVariables = Exact<{
+  courseId: Scalars['ID']['input'];
+}>;
+
+export type CourseQuizQuery = {
+  __typename?: 'Query';
+  quiz: {
+    __typename?: 'Quiz';
+    id: string;
+    courseId: string;
+    title: string;
+    courseTitle: string;
+    questions: Array<{
+      __typename?: 'QuizQuestion';
+      id: string;
+      question: string;
+      options: Array<string>;
+      orderIndex: number;
+    }>;
+  };
+};
+
+export type AnswerFeedbackQueryVariables = Exact<{
+  questionId: Scalars['ID']['input'];
+}>;
+
+export type AnswerFeedbackQuery = {
+  __typename?: 'Query';
+  answerFeedback: {
+    __typename?: 'AnswerFeedback';
+    questionId: string;
+    correctIndex: number;
+    explanation: string;
+  };
+};
+
+export type SubmitQuizMutationVariables = Exact<{
+  input: SubmitQuizInput;
+}>;
+
+export type SubmitQuizMutation = {
+  __typename?: 'Mutation';
+  submitQuiz: {
+    __typename?: 'QuizResult';
+    score: number;
+    total: number;
+    correct: number;
+    attemptId: string;
   };
 };
 
@@ -976,6 +1115,7 @@ export const CoursesDocument = gql`
         id
         lessonsComplete
         completedAt
+        quizScore
       }
       lessons {
         id
@@ -1050,6 +1190,7 @@ export const CourseDetailDocument = gql`
         id
         lessonsComplete
         completedAt
+        quizScore
       }
       lessons {
         id
@@ -1197,6 +1338,275 @@ export type TodaysConceptSuspenseQueryHookResult = ReturnType<typeof useTodaysCo
 export type TodaysConceptQueryResult = Apollo.QueryResult<
   TodaysConceptQuery,
   TodaysConceptQueryVariables
+>;
+export const AiSuggestionsDocument = gql`
+  query AISuggestions {
+    aiSuggestions {
+      id
+      title
+      body
+      ctaLink
+      generatedAt
+    }
+  }
+`;
+
+/**
+ * __useAiSuggestionsQuery__
+ *
+ * To run a query within a React component, call `useAiSuggestionsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useAiSuggestionsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useAiSuggestionsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useAiSuggestionsQuery(
+  baseOptions?: Apollo.QueryHookOptions<AiSuggestionsQuery, AiSuggestionsQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<AiSuggestionsQuery, AiSuggestionsQueryVariables>(
+    AiSuggestionsDocument,
+    options,
+  );
+}
+export function useAiSuggestionsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<AiSuggestionsQuery, AiSuggestionsQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<AiSuggestionsQuery, AiSuggestionsQueryVariables>(
+    AiSuggestionsDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useAiSuggestionsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<AiSuggestionsQuery, AiSuggestionsQueryVariables>,
+): Apollo.UseSuspenseQueryResult<AiSuggestionsQuery, AiSuggestionsQueryVariables>;
+export function useAiSuggestionsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<AiSuggestionsQuery, AiSuggestionsQueryVariables>,
+): Apollo.UseSuspenseQueryResult<AiSuggestionsQuery | undefined, AiSuggestionsQueryVariables>;
+export function useAiSuggestionsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<AiSuggestionsQuery, AiSuggestionsQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<AiSuggestionsQuery, AiSuggestionsQueryVariables>(
+    AiSuggestionsDocument,
+    options,
+  );
+}
+export type AiSuggestionsQueryHookResult = ReturnType<typeof useAiSuggestionsQuery>;
+export type AiSuggestionsLazyQueryHookResult = ReturnType<typeof useAiSuggestionsLazyQuery>;
+export type AiSuggestionsSuspenseQueryHookResult = ReturnType<typeof useAiSuggestionsSuspenseQuery>;
+export type AiSuggestionsQueryResult = Apollo.QueryResult<
+  AiSuggestionsQuery,
+  AiSuggestionsQueryVariables
+>;
+export const CourseQuizDocument = gql`
+  query CourseQuiz($courseId: ID!) {
+    quiz(courseId: $courseId) {
+      id
+      courseId
+      title
+      courseTitle
+      questions {
+        id
+        question
+        options
+        orderIndex
+      }
+    }
+  }
+`;
+
+/**
+ * __useCourseQuizQuery__
+ *
+ * To run a query within a React component, call `useCourseQuizQuery` and pass it any options that fit your needs.
+ * When your component renders, `useCourseQuizQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useCourseQuizQuery({
+ *   variables: {
+ *      courseId: // value for 'courseId'
+ *   },
+ * });
+ */
+export function useCourseQuizQuery(
+  baseOptions: Apollo.QueryHookOptions<CourseQuizQuery, CourseQuizQueryVariables> &
+    ({ variables: CourseQuizQueryVariables; skip?: boolean } | { skip: boolean }),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<CourseQuizQuery, CourseQuizQueryVariables>(CourseQuizDocument, options);
+}
+export function useCourseQuizLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<CourseQuizQuery, CourseQuizQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<CourseQuizQuery, CourseQuizQueryVariables>(
+    CourseQuizDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useCourseQuizSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<CourseQuizQuery, CourseQuizQueryVariables>,
+): Apollo.UseSuspenseQueryResult<CourseQuizQuery, CourseQuizQueryVariables>;
+export function useCourseQuizSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<CourseQuizQuery, CourseQuizQueryVariables>,
+): Apollo.UseSuspenseQueryResult<CourseQuizQuery | undefined, CourseQuizQueryVariables>;
+export function useCourseQuizSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<CourseQuizQuery, CourseQuizQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<CourseQuizQuery, CourseQuizQueryVariables>(
+    CourseQuizDocument,
+    options,
+  );
+}
+export type CourseQuizQueryHookResult = ReturnType<typeof useCourseQuizQuery>;
+export type CourseQuizLazyQueryHookResult = ReturnType<typeof useCourseQuizLazyQuery>;
+export type CourseQuizSuspenseQueryHookResult = ReturnType<typeof useCourseQuizSuspenseQuery>;
+export type CourseQuizQueryResult = Apollo.QueryResult<CourseQuizQuery, CourseQuizQueryVariables>;
+export const AnswerFeedbackDocument = gql`
+  query AnswerFeedback($questionId: ID!) {
+    answerFeedback(questionId: $questionId) {
+      questionId
+      correctIndex
+      explanation
+    }
+  }
+`;
+
+/**
+ * __useAnswerFeedbackQuery__
+ *
+ * To run a query within a React component, call `useAnswerFeedbackQuery` and pass it any options that fit your needs.
+ * When your component renders, `useAnswerFeedbackQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useAnswerFeedbackQuery({
+ *   variables: {
+ *      questionId: // value for 'questionId'
+ *   },
+ * });
+ */
+export function useAnswerFeedbackQuery(
+  baseOptions: Apollo.QueryHookOptions<AnswerFeedbackQuery, AnswerFeedbackQueryVariables> &
+    ({ variables: AnswerFeedbackQueryVariables; skip?: boolean } | { skip: boolean }),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<AnswerFeedbackQuery, AnswerFeedbackQueryVariables>(
+    AnswerFeedbackDocument,
+    options,
+  );
+}
+export function useAnswerFeedbackLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<AnswerFeedbackQuery, AnswerFeedbackQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<AnswerFeedbackQuery, AnswerFeedbackQueryVariables>(
+    AnswerFeedbackDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useAnswerFeedbackSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<AnswerFeedbackQuery, AnswerFeedbackQueryVariables>,
+): Apollo.UseSuspenseQueryResult<AnswerFeedbackQuery, AnswerFeedbackQueryVariables>;
+export function useAnswerFeedbackSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<AnswerFeedbackQuery, AnswerFeedbackQueryVariables>,
+): Apollo.UseSuspenseQueryResult<AnswerFeedbackQuery | undefined, AnswerFeedbackQueryVariables>;
+export function useAnswerFeedbackSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<AnswerFeedbackQuery, AnswerFeedbackQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<AnswerFeedbackQuery, AnswerFeedbackQueryVariables>(
+    AnswerFeedbackDocument,
+    options,
+  );
+}
+export type AnswerFeedbackQueryHookResult = ReturnType<typeof useAnswerFeedbackQuery>;
+export type AnswerFeedbackLazyQueryHookResult = ReturnType<typeof useAnswerFeedbackLazyQuery>;
+export type AnswerFeedbackSuspenseQueryHookResult = ReturnType<
+  typeof useAnswerFeedbackSuspenseQuery
+>;
+export type AnswerFeedbackQueryResult = Apollo.QueryResult<
+  AnswerFeedbackQuery,
+  AnswerFeedbackQueryVariables
+>;
+export const SubmitQuizDocument = gql`
+  mutation SubmitQuiz($input: SubmitQuizInput!) {
+    submitQuiz(input: $input) {
+      score
+      total
+      correct
+      attemptId
+    }
+  }
+`;
+export type SubmitQuizMutationFn = Apollo.MutationFunction<
+  SubmitQuizMutation,
+  SubmitQuizMutationVariables
+>;
+
+/**
+ * __useSubmitQuizMutation__
+ *
+ * To run a mutation, you first call `useSubmitQuizMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useSubmitQuizMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [submitQuizMutation, { data, loading, error }] = useSubmitQuizMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useSubmitQuizMutation(
+  baseOptions?: Apollo.MutationHookOptions<SubmitQuizMutation, SubmitQuizMutationVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<SubmitQuizMutation, SubmitQuizMutationVariables>(
+    SubmitQuizDocument,
+    options,
+  );
+}
+export type SubmitQuizMutationHookResult = ReturnType<typeof useSubmitQuizMutation>;
+export type SubmitQuizMutationResult = Apollo.MutationResult<SubmitQuizMutation>;
+export type SubmitQuizMutationOptions = Apollo.BaseMutationOptions<
+  SubmitQuizMutation,
+  SubmitQuizMutationVariables
 >;
 export const CompleteLessonDocument = gql`
   mutation CompleteLesson($input: CompleteLessonInput!) {

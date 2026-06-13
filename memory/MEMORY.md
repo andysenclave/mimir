@@ -1,3 +1,3 @@
 # Mimir Memory Index
 
-- [No git commands during sessions](feedback_no_git.md) — Andy commits after verifying; Claude never runs git
+- [🔴 RULE ZERO — NO GIT COMMANDS, EVER](feedback_no_git.md) — read first every session; never run ANY git command (not even read-only git status/log/stash); one violation ends the contract

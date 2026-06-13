@@ -13,4 +13,7 @@ export class CourseProgressGql {
 
   @Field(() => String, { nullable: true })
   completedAt?: string | null;
+
+  @Field(() => Int, { nullable: true, description: 'Best quiz score (percentage 0-100).' })
+  quizScore?: number | null;
 }

@@ -12,6 +12,7 @@
 //   TCS:       5 shares × prevClose 3900 × changePct 4% → weight 19,500
 //   portfolioChangePct = (28,000×2 + 19,500×4) / 47,500 = 134,000 / 47,500 ≈ 2.821%
 
+import { getQueueToken } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
@@ -24,6 +25,7 @@ import {
   OrderRateLimitException,
   TopUpExceedsTierMaxException,
 } from '../../../common/exceptions/trading.exceptions';
+import { ORDER_FILL_QUEUE } from '../../../jobs/order-fill-notification.processor';
 import { PrismaService } from '../../../prisma/prisma.service';
 import {
   MarketDataProvider,
@@ -32,7 +34,7 @@ import {
 } from '../../market/providers/market-data-provider.interface';
 import { PlaceOrderInput } from '../dto/place-order.input';
 import { TopupBudgetInput } from '../dto/topup-budget.input';
-import { TradingService, TRADING_REDIS } from '../trading.service';
+import { TradingService, TRADING_REDIS, TRADING_PUB_SUB } from '../trading.service';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -135,6 +137,10 @@ const mockPrisma = {
     findUnique: jest.fn(),
     create: jest.fn(),
   },
+  // MM-035 — BudgetEvent audit rows written inside the top-up / rollover transactions.
+  budgetEvent: {
+    create: jest.fn(),
+  },
   $transaction: jest.fn(),
 };
 
@@ -161,6 +167,17 @@ const mockRedis = {
   pipeline: jest.fn(),
 };
 
+// graphql-redis-subscriptions — only asyncIterableIterator is touched by the service.
+const mockPubSub = {
+  publish: jest.fn(),
+  asyncIterableIterator: jest.fn(),
+};
+
+// BullMQ order-fill-notification queue — placeOrder fires .add() fire-and-forget.
+const mockOrderFillQueue = {
+  add: jest.fn().mockResolvedValue(undefined),
+};
+
 // ─── Suites ───────────────────────────────────────────────────────────────────
 
 describe('TradingService', () => {
@@ -175,12 +192,18 @@ describe('TradingService', () => {
     jest.spyOn(Logger.prototype, 'log').mockReturnValue(undefined);
     jest.spyOn(Logger.prototype, 'error').mockReturnValue(undefined);
 
+    // resetAllMocks wiped the implementation — re-arm the fire-and-forget queue
+    // so placeOrder's `orderFillQueue.add(...).catch(...)` has a thenable to chain.
+    mockOrderFillQueue.add.mockResolvedValue(undefined);
+
     const module = await Test.createTestingModule({
       providers: [
         TradingService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: MarketDataProvider, useValue: mockProvider },
         { provide: TRADING_REDIS, useValue: mockRedis },
+        { provide: TRADING_PUB_SUB, useValue: mockPubSub },
+        { provide: getQueueToken(ORDER_FILL_QUEUE), useValue: mockOrderFillQueue },
       ],
     }).compile();
 
@@ -599,6 +622,8 @@ describe('TradingService', () => {
         cashRemaining: new Prisma.Decimal(50_000),
       };
       mockPrisma.monthlyBudget.update.mockResolvedValue(updatedBudget);
+      // $transaction([update, budgetEvent.create]) resolves to [updatedBudget, eventRow].
+      mockPrisma.$transaction.mockResolvedValue([updatedBudget, {}]);
 
       const result = await service.topupBudget(USER_ID, { amount: 5000 } as TopupBudgetInput);
 
@@ -615,10 +640,9 @@ describe('TradingService', () => {
       // amount=50K, cashRemaining=40K → headroom=10K; top-up 10K is exactly at limit
       const budget = makeActiveBudget(40_000, 50_000);
       mockPrisma.monthlyBudget.findFirst.mockResolvedValue(budget);
-      mockPrisma.monthlyBudget.update.mockResolvedValue({
-        ...budget,
-        cashRemaining: new Prisma.Decimal(50_000),
-      });
+      const updatedBudget = { ...budget, cashRemaining: new Prisma.Decimal(50_000) };
+      mockPrisma.monthlyBudget.update.mockResolvedValue(updatedBudget);
+      mockPrisma.$transaction.mockResolvedValue([updatedBudget, {}]);
 
       await expect(
         service.topupBudget(USER_ID, { amount: 10_000 } as TopupBudgetInput),
@@ -641,7 +665,7 @@ describe('TradingService', () => {
         .mockResolvedValueOnce([]);
       mockPrisma.monthlyBudget.update.mockResolvedValue({});
       mockPrisma.monthlyBudget.create.mockResolvedValue({});
-      mockPrisma.$transaction.mockResolvedValue([{}, {}]);
+      mockPrisma.$transaction.mockResolvedValue([{}, {}, {}]);
 
       const result = await service.runMonthlyRollover();
 
@@ -650,7 +674,8 @@ describe('TradingService', () => {
       // Each call should include cashRemaining: 0 on the EXPIRED row
       expect(mockPrisma.$transaction).toHaveBeenCalledTimes(2);
       const firstCallArgs = mockPrisma.$transaction.mock.calls[0]?.[0] as unknown[];
-      expect(firstCallArgs).toHaveLength(2); // [expire op, create op]
+      // [expire op, create op, budgetEvent ROLLOVER op] — MM-035 added the audit row.
+      expect(firstCallArgs).toHaveLength(3);
     });
 
     it('increments failed count and continues when a single budget rollover throws', async () => {

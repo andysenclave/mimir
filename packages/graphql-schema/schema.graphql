@@ -12,6 +12,24 @@ type AIInsightGql {
   symbol: String!
 }
 
+type AISuggestion {
+  body: String!
+
+  """
+  "course:<courseId>" or "concept:<conceptId>"
+  """
+  ctaLink: String!
+  generatedAt: String!
+  id: ID!
+  title: String!
+}
+
+type AnswerFeedback {
+  correctIndex: Int!
+  explanation: String!
+  questionId: ID!
+}
+
 type AuthUser {
   displayName: String
   email: String!
@@ -57,6 +75,9 @@ type CourseProgress {
   courseId: String!
   id: ID!
   lessonsComplete: Int!
+
+  """Best quiz score (percentage 0-100)."""
+  quizScore: Int
 }
 
 """
@@ -157,6 +178,9 @@ type Mutation {
   Remove a stock from the authenticated user's watchlist. Idempotent — returns true even if the symbol was not present.
   """
   removeFromWatchlist(symbol: String!): Boolean!
+
+  """Score a quiz server-side. Best score is kept on CourseProgress."""
+  submitQuiz(input: SubmitQuizInput!): QuizResult!
 
   """Enable or disable price-alert pushes for a watchlist item."""
   toggleWatchlistAlert(enabled: Boolean!, symbol: String!): WatchlistItemGql!
@@ -349,6 +373,16 @@ type Query {
   """
   aiInsight(symbol: String!): AIInsightGql
 
+  """
+  Portfolio-aware learning suggestions — 2-3 cards, regenerated at most every 24h.
+  """
+  aiSuggestions: [AISuggestion!]!
+
+  """
+  Correct answer + explanation for one question, fetched after the user answers.
+  """
+  answerFeedback(questionId: ID!): AnswerFeedback!
+
   """Single course with lessons and user progress."""
   course(id: ID!): Course!
 
@@ -384,6 +418,9 @@ type Query {
   """
   profile: UserProfileGql!
 
+  """Quiz for a course. Never exposes correct answers."""
+  quiz(courseId: ID!): Quiz!
+
   """Last-known snapshot for a single NSE symbol."""
   stock(symbol: String!): StockQuoteGql
 
@@ -394,6 +431,39 @@ type Query {
 
   """Today's concept — deterministic daily rotation."""
   todaysConcept: Concept!
+}
+
+type Quiz {
+  courseId: ID!
+
+  """Course title, for the quiz screen header."""
+  courseTitle: String!
+  id: ID!
+  questions: [QuizQuestion!]!
+  title: String!
+}
+
+input QuizAnswerInput {
+  questionId: ID!
+  selectedIndex: Int!
+}
+
+type QuizQuestion {
+  id: ID!
+  options: [String!]!
+  orderIndex: Int!
+  question: String!
+}
+
+type QuizResult {
+  attemptId: ID!
+
+  """Number of correctly answered questions."""
+  correct: Int!
+
+  """Percentage score 0-100."""
+  score: Int!
+  total: Int!
 }
 
 input RegisterPushDeviceInput {
@@ -432,6 +502,11 @@ type StockQuoteGql {
   open: Float
   symbol: String!
   volume: Float
+}
+
+input SubmitQuizInput {
+  answers: [QuizAnswerInput!]!
+  quizId: ID!
 }
 
 type Subscription {

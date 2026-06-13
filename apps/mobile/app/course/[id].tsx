@@ -2,8 +2,8 @@
 // Prompt 30 (screen scaffold): thin wiring of hook + feature components.
 
 import { router, useLocalSearchParams } from 'expo-router';
-import { Lock } from 'lucide-react-native';
-import { ScrollView, Text, View } from 'react-native';
+import { GraduationCap, Lock } from 'lucide-react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ErrorState } from '@/components/layout/ErrorState';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
@@ -88,22 +88,33 @@ export default function CourseDetailScreen(): React.JSX.Element {
             ))}
           </View>
 
-          {/* Quiz row — locked until all lessons done */}
-          <View
+          {/* Quiz row — locked until all lessons done; navigates to the quiz when unlocked (MM-054) */}
+          <Pressable
+            disabled={!quizUnlocked}
+            onPress={() => router.push(`/course/${course.id}/quiz`)}
             className={`flex-row items-center gap-3 px-4 py-3 rounded-xl border ${
-              quizUnlocked ? 'border-accent bg-accent/10' : 'border-border-subtle bg-bg-secondary opacity-50'
+              quizUnlocked
+                ? 'border-accent bg-accent/10 active:opacity-70'
+                : 'border-border-subtle bg-bg-secondary opacity-50'
             }`}
           >
-            <Lock size={20} color={quizUnlocked ? tokens.accent : tokens.text.tertiary} strokeWidth={1.75} />
+            {quizUnlocked ? (
+              <GraduationCap size={20} color={tokens.accent} strokeWidth={1.75} />
+            ) : (
+              <Lock size={20} color={tokens.text.tertiary} strokeWidth={1.75} />
+            )}
             <View>
               <Text className={`text-sm font-medium ${quizUnlocked ? 'text-accent' : 'text-text-tertiary'}`}>
                 Quiz
+                {course.progress?.quizScore !== null && course.progress?.quizScore !== undefined && (
+                  <Text className="font-mono"> · best {course.progress.quizScore}%</Text>
+                )}
               </Text>
               <Text className="text-xs text-text-tertiary">
                 {quizUnlocked ? 'Ready to test your knowledge' : 'Complete all lessons to unlock'}
               </Text>
             </View>
-          </View>
+          </Pressable>
 
           <Text className="text-xs text-text-tertiary text-center">
             Educational simulation. Not investment advice.

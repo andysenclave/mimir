@@ -19,7 +19,10 @@ export type AnalyticsEvent =
   | { name: 'soft_prompt_accepted'; props: Record<string, never> }
   | { name: 'soft_prompt_declined'; props: Record<string, never> }
   | { name: 'native_permission_granted'; props: Record<string, never> }
-  | { name: 'native_permission_denied'; props: Record<string, never> };
+  | { name: 'native_permission_denied'; props: Record<string, never> }
+  | { name: 'ai_suggestion_tapped'; props: { ctaLink: string } };
+// quiz_completed is emitted server-side by LearningService.submitQuiz (MM-055)
+// to avoid double counting.
 
 interface AnalyticsAPI {
   track: (event: AnalyticsEvent) => void;

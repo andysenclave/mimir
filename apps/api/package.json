@@ -20,6 +20,7 @@
     "prisma:studio": "dotenv -e .env.local -- prisma studio",
     "prisma:seed": "dotenv -e .env.local -- ts-node --transpile-only prisma/seed.ts",
     "seed:courses": "dotenv -e .env.local -- ts-node -r tsconfig-paths/register --transpile-only prisma/seed/courses.ts",
+    "seed:quizzes": "dotenv -e .env.local -- ts-node -r tsconfig-paths/register --transpile-only prisma/seed/quizzes.ts",
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
@@ -100,7 +101,8 @@
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^@mimir/shared$": "<rootDir>/../../../packages/shared/src/index.ts",
-      "^@mimir/shared/(.*)$": "<rootDir>/../../../packages/shared/src/$1"
+      "^@mimir/shared/(.*)$": "<rootDir>/../../../packages/shared/src/$1",
+      "^expo-server-sdk$": "<rootDir>/../test/mocks/expo-server-sdk.ts"
     }
   }
 }

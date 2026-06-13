@@ -97,6 +97,7 @@ model User {
   budgetEvents      BudgetEvent[]
   courseProgresses  CourseProgress[]
   quizAttempts      QuizAttempt[]
+  aiSuggestions     AISuggestion[]
 
   @@index([email])
 }
@@ -407,6 +408,8 @@ model CourseProgress {
   lessonId        String?
   lessonsComplete Int       @default(0)
   completedAt     DateTime?
+  // MM-055 — best quiz score (percentage 0–100) across attempts; null until first attempt.
+  quizScore       Int?
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -438,6 +441,9 @@ model QuizQuestion {
   question     String   @db.Text
   options      Json
   correctIndex Int
+  // MM-053 — why the correct answer is right AND why each wrong option is wrong.
+  // Server-side only alongside correctIndex; exposed via AnswerFeedback after the user answers.
+  explanation  String   @db.Text @default("")
   orderIndex   Int
 
   createdAt    DateTime @default(now())
@@ -460,6 +466,21 @@ model QuizAttempt {
   quiz        Quiz     @relation(fields: [quizId], references: [id])
 
   @@index([userId, quizId])
+}
+
+// MM-051 — portfolio-aware AI learning suggestions (CLAUDE.md §9 pipeline; D12 on-demand path).
+// 2–3 rows per user, regenerated at most once per 24h (Redis-gated); old rows replaced on refresh.
+model AISuggestion {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  body        String   @db.Text
+  ctaLink     String // "course:<courseId>" or "concept:<conceptId>"
+  generatedAt DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, generatedAt])
 }
 
 model Concept {

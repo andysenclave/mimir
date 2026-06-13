@@ -7,11 +7,18 @@ import { ScrollView, Text, View } from 'react-native';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { CourseCard } from '@/features/learn/CourseCard';
-import { TodaysConceptCard } from '@/features/learn/TodaysConceptCard';
+import { useAISuggestions } from '@/features/learn/hooks/useAISuggestions';
 import { useLearnHub } from '@/features/learn/hooks/useLearnHub';
+import { SuggestionCard } from '@/features/learn/SuggestionCard';
+import { TodaysConceptCard } from '@/features/learn/TodaysConceptCard';
 
 export default function LearnTab(): React.JSX.Element {
   const { courses, todaysConcept, loading, error, refetch } = useLearnHub();
+  const {
+    suggestions,
+    loading: suggestionsLoading,
+    onSuggestionPress,
+  } = useAISuggestions();
 
   if (error && courses.length === 0) {
     return <ErrorState message="Couldn't load courses." onRetry={() => void refetch()} />;
@@ -29,6 +36,32 @@ export default function LearnTab(): React.JSX.Element {
           {todaysConcept !== null && (
             <TodaysConceptCard title={todaysConcept.title} body={todaysConcept.body} />
           )}
+
+          {/* AI suggestions — hidden entirely on error or empty (MM-052) */}
+          {suggestionsLoading && suggestions.length === 0 ? (
+            <View className="gap-3">
+              {[0, 1].map((i) => (
+                <View key={i} className="h-32 rounded-xl bg-bg-secondary" />
+              ))}
+            </View>
+          ) : suggestions.length > 0 ? (
+            <View className="gap-2">
+              <Text className="text-sm font-medium uppercase tracking-widest text-text-tertiary">
+                For you
+              </Text>
+              <View className="gap-3">
+                {suggestions.map((s) => (
+                  <SuggestionCard
+                    key={s.id}
+                    title={s.title}
+                    body={s.body}
+                    ctaLink={s.ctaLink}
+                    onPress={() => onSuggestionPress(s.ctaLink)}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           <View className="gap-2">
             <Text className="text-sm font-medium uppercase tracking-widest text-text-tertiary">

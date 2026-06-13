@@ -2,15 +2,18 @@
 // Owns all learning domain business logic.
 // Prompt 14 (service-method): service owns logic; resolver calls, returns.
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { PostHogService } from '../../observability/posthog.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CompleteLessonInput } from './dto/complete-lesson.input';
+import { SubmitQuizInput } from './dto/submit-quiz.input';
 
 import type { ConceptGql } from './entities/concept.entity';
 import type { CourseProgressGql } from './entities/course-progress.entity';
 import type { CourseGql } from './entities/course.entity';
+import type { AnswerFeedbackGql, QuizGql, QuizResultGql } from './entities/quiz.entity';
 
 const IST_OFFSET_HOURS = 5.5;
 
@@ -19,18 +22,23 @@ function serializeProgress(p: {
   courseId: string;
   lessonsComplete: number;
   completedAt: Date | null;
+  quizScore: number | null;
 }): CourseProgressGql {
   return {
     id: p.id,
     courseId: p.courseId,
     lessonsComplete: p.lessonsComplete,
     completedAt: p.completedAt?.toISOString() ?? null,
+    quizScore: p.quizScore,
   };
 }
 
 @Injectable()
 export class LearningService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly posthog: PostHogService,
+  ) {}
 
   async getCourses(userId: string): Promise<CourseGql[]> {
     const courses = await this.prisma.course.findMany({
@@ -153,6 +161,113 @@ export class LearningService {
     }
 
     return { id: concept.id, title: concept.title, body: concept.body, orderIndex: concept.orderIndex };
+  }
+
+  // ─── MM-054/055 — Quiz ───────────────────────────────────────────────────
+
+  /** Quiz for a course, questions ordered. correctIndex/explanation never leave the server. */
+  async getQuiz(courseId: string): Promise<QuizGql> {
+    const quiz = await this.prisma.quiz.findUnique({
+      where: { courseId },
+      include: {
+        course: { select: { title: true } },
+        questions: { orderBy: { orderIndex: 'asc' } },
+      },
+    });
+    if (quiz === null) throw new NotFoundException(`No quiz for course ${courseId}`);
+
+    return {
+      id: quiz.id,
+      courseId: quiz.courseId,
+      title: quiz.title,
+      courseTitle: quiz.course.title,
+      questions: quiz.questions.map((q) => ({
+        id: q.id,
+        question: q.question,
+        options: q.options as string[],
+        orderIndex: q.orderIndex,
+      })),
+    };
+  }
+
+  /** Per-question feedback, fetched by mobile after the user selects an option. */
+  async getAnswerFeedback(questionId: string): Promise<AnswerFeedbackGql> {
+    const question = await this.prisma.quizQuestion.findUnique({
+      where: { id: questionId },
+      select: { id: true, correctIndex: true, explanation: true },
+    });
+    if (question === null) throw new NotFoundException(`Question ${questionId} not found`);
+
+    return {
+      questionId: question.id,
+      correctIndex: question.correctIndex,
+      explanation: question.explanation,
+    };
+  }
+
+  /**
+   * Score a completed quiz server-side, persist the attempt, and keep the best
+   * score (percentage) on CourseProgress. Retakes always create a new attempt;
+   * the progress score only moves up.
+   */
+  async submitQuiz(userId: string, input: SubmitQuizInput): Promise<QuizResultGql> {
+    const quiz = await this.prisma.quiz.findUnique({
+      where: { id: input.quizId },
+      include: { questions: { select: { id: true, correctIndex: true } } },
+    });
+    if (quiz === null) throw new NotFoundException(`Quiz ${input.quizId} not found`);
+
+    const total = quiz.questions.length;
+    const answerMap = new Map(input.answers.map((a) => [a.questionId, a.selectedIndex]));
+    if (answerMap.size !== total || quiz.questions.some((q) => !answerMap.has(q.id))) {
+      throw new BadRequestException('Answers must cover every question exactly once');
+    }
+
+    const correct = quiz.questions.filter((q) => answerMap.get(q.id) === q.correctIndex).length;
+    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    const [attempt, attemptNumber] = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.quizAttempt.create({
+        data: {
+          userId,
+          quizId: quiz.id,
+          score,
+          total,
+          answers: input.answers.map((a) => ({
+            questionId: a.questionId,
+            selectedIndex: a.selectedIndex,
+          })),
+        },
+      });
+
+      const count = await tx.quizAttempt.count({ where: { userId, quizId: quiz.id } });
+
+      // Highest score wins. upsert covers the (unusual) case of no progress row.
+      const progress = await tx.courseProgress.findUnique({
+        where: { userId_courseId: { userId, courseId: quiz.courseId } },
+      });
+      if (progress === null) {
+        await tx.courseProgress.create({
+          data: { userId, courseId: quiz.courseId, quizScore: score },
+        });
+      } else if (progress.quizScore === null || score > progress.quizScore) {
+        await tx.courseProgress.update({
+          where: { userId_courseId: { userId, courseId: quiz.courseId } },
+          data: { quizScore: score },
+        });
+      }
+
+      return [created, count] as const;
+    });
+
+    this.posthog.capture(userId, 'quiz_completed', {
+      courseId: quiz.courseId,
+      score,
+      total,
+      attemptNumber,
+    });
+
+    return { score, total, correct, attemptId: attempt.id };
   }
 
   private getDayOfYear(date: Date): number {

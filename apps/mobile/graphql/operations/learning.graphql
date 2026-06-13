@@ -10,6 +10,7 @@ query Courses {
       id
       lessonsComplete
       completedAt
+      quizScore
     }
     lessons {
       id
@@ -33,6 +34,7 @@ query CourseDetail($id: ID!) {
       id
       lessonsComplete
       completedAt
+      quizScore
     }
     lessons {
       id
@@ -51,6 +53,48 @@ query TodaysConcept {
     title
     body
     orderIndex
+  }
+}
+
+query AISuggestions {
+  aiSuggestions {
+    id
+    title
+    body
+    ctaLink
+    generatedAt
+  }
+}
+
+query CourseQuiz($courseId: ID!) {
+  quiz(courseId: $courseId) {
+    id
+    courseId
+    title
+    courseTitle
+    questions {
+      id
+      question
+      options
+      orderIndex
+    }
+  }
+}
+
+query AnswerFeedback($questionId: ID!) {
+  answerFeedback(questionId: $questionId) {
+    questionId
+    correctIndex
+    explanation
+  }
+}
+
+mutation SubmitQuiz($input: SubmitQuizInput!) {
+  submitQuiz(input: $input) {
+    score
+    total
+    correct
+    attemptId
   }
 }
 

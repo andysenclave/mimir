@@ -22,35 +22,27 @@ import { AIAuditService } from './audit/ai-audit.service';
 import { AICacheService, type CachedInsight } from './cache/ai-cache.service';
 import { type AIInsightGql } from './entities/ai-insight.entity';
 import {
+  PORTFOLIO_SUGGESTION_PROMPT_VERSION,
+  PORTFOLIO_SUGGESTION_SYSTEM_PROMPT,
+  buildPortfolioSuggestionUserMessage,
+  type PortfolioSuggestionInput,
+} from './prompts/portfolio-suggestion';
+import {
   STOCK_INSIGHT_PROMPT_VERSION,
   STOCK_INSIGHT_SYSTEM_PROMPT,
   buildStockInsightUserMessage,
   type StockInsightInput,
 } from './prompts/stock-insight';
 import { QuotaService } from './quota/quota.service';
-import { validateStockInsight } from './validators';
+import { sectorFor } from './sector-map';
+import { validatePortfolioSuggestions, validateStockInsight, type SuggestionCard } from './validators';
 
 import type { Env } from '../config/env.schema';
 
 const MODEL = 'claude-haiku-4-5';
 const MAX_RETRIES = 2;
 const MAX_TOKENS  = 200;
-
-// Sector lookup for the hallucination heuristic anchor check.
-// Hardcoded for Phase 1 — refreshed in Phase 2 from MarketService.
-const SYMBOL_SECTOR_MAP: Record<string, string> = {
-  RELIANCE: 'Energy', TCS: 'Technology', HDFCBANK: 'Banking',
-  ICICIBANK: 'Banking', INFY: 'Technology', HINDUNILVR: 'FMCG',
-  ITC: 'FMCG', SBIN: 'Banking', BHARTIARTL: 'Telecom',
-  KOTAKBANK: 'Banking', LT: 'Infrastructure', AXISBANK: 'Banking',
-  ASIANPAINT: 'Paints', MARUTI: 'Automobile', TITAN: 'Consumer Goods',
-  BAJFINANCE: 'Financial Services', HCLTECH: 'Technology',
-  SUNPHARMA: 'Pharma', WIPRO: 'Technology', ULTRACEMCO: 'Cement',
-};
-
-function sectorFor(symbol: string): string {
-  return SYMBOL_SECTOR_MAP[symbol] ?? 'Diversified';
-}
+const SUGGESTION_MAX_TOKENS = 800;
 
 function symbolName(symbol: string): string {
   // Simple title-case — fine for P1; Phase 2 fetches from fundamentals API
@@ -153,6 +145,106 @@ export class AIService {
       fromQuota: !!opts.userId && !opts.precomputed,
       quotaWarning,
     });
+  }
+
+  /**
+   * MM-051 — generate 2-3 portfolio-aware learning suggestion cards.
+   * Caching, persistence, and stale fallback are owned by AISuggestionsService;
+   * this method is generation + validation + audit only.
+   * Returns null when the key is unconfigured or all retries fail.
+   */
+  async generatePortfolioSuggestions(
+    userId: string,
+    input: PortfolioSuggestionInput,
+  ): Promise<SuggestionCard[] | null> {
+    if (!this.anthropic) return null;
+
+    const allowedCtaIds = new Set<string>([
+      ...input.availableCourses.map((c) => `course:${c.id}`),
+      ...input.availableConcepts.map((c) => `concept:${c.id}`),
+    ]);
+    if (allowedCtaIds.size === 0) {
+      this.logger.warn(`No available courses/concepts to suggest for user ${userId}`);
+      return null;
+    }
+
+    for (let attempt = 0; attempt < MAX_RETRIES + 1; attempt++) {
+      const start = Date.now();
+      let rawText: string | null = null;
+      let usage: { input_tokens: number; output_tokens: number } = { input_tokens: 0, output_tokens: 0 };
+      let failureReason: string | null = null;
+
+      try {
+        const response = await this.anthropic.messages.create({
+          model: MODEL,
+          system: PORTFOLIO_SUGGESTION_SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: buildPortfolioSuggestionUserMessage(input) }],
+          max_tokens: SUGGESTION_MAX_TOKENS,
+        });
+        usage = response.usage;
+        const block = response.content[0];
+        rawText = block && block.type === 'text' ? block.text.trim() : null;
+      } catch (err) {
+        failureReason = `Anthropic API error: ${String(err)}`;
+        this.logger.error(`Suggestion generation attempt ${attempt + 1} failed for ${userId}`, err);
+      }
+
+      const latencyMs = Date.now() - start;
+
+      if (rawText) {
+        const validation = validatePortfolioSuggestions(rawText, allowedCtaIds);
+        if (validation.ok) {
+          await this.audit.log({
+            userId,
+            prompt: PORTFOLIO_SUGGESTION_SYSTEM_PROMPT,
+            response: rawText,
+            promptVersion: PORTFOLIO_SUGGESTION_PROMPT_VERSION,
+            model: MODEL,
+            tokenCount: usage.input_tokens + usage.output_tokens,
+            latencyMs,
+            cachedHit: false,
+          });
+          return validation.cards;
+        }
+        failureReason = validation.reason;
+        this.logger.warn(
+          `Suggestion validation failed (attempt ${attempt + 1}) for ${userId}: ${validation.reason}`,
+        );
+      }
+
+      await this.audit.log({
+        userId,
+        prompt: PORTFOLIO_SUGGESTION_SYSTEM_PROMPT,
+        response: rawText ?? '[generation_error]',
+        promptVersion: PORTFOLIO_SUGGESTION_PROMPT_VERSION,
+        model: MODEL,
+        tokenCount: usage.input_tokens + usage.output_tokens || null,
+        latencyMs,
+        cachedHit: false,
+        failureReason: failureReason ?? undefined,
+      });
+    }
+
+    return null;
+  }
+
+  /** Sector concentration helper for the suggestions input — exposed so the
+   *  learning module never re-implements the sector map. */
+  buildSectorConcentrations(
+    holdings: Array<{ symbol: string; quantity: number; avgBuyPrice: number }>,
+  ): Array<{ sector: string; pct: number }> {
+    const totalValue = holdings.reduce((sum, h) => sum + h.quantity * h.avgBuyPrice, 0);
+    if (totalValue <= 0) return [];
+
+    const bySector = new Map<string, number>();
+    for (const h of holdings) {
+      const sector = sectorFor(h.symbol);
+      bySector.set(sector, (bySector.get(sector) ?? 0) + h.quantity * h.avgBuyPrice);
+    }
+
+    return [...bySector.entries()]
+      .map(([sector, value]) => ({ sector, pct: Math.round((value / totalValue) * 100) }))
+      .sort((a, b) => b.pct - a.pct);
   }
 
   // ─── Private ──────────────────────────────────────────────────────────────

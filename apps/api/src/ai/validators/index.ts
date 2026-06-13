@@ -9,6 +9,7 @@ import { checkLength } from './length';
 export { checkBannedWords } from './banned-words';
 export { checkLength } from './length';
 export { checkAnchors } from './hallucination';
+export { validatePortfolioSuggestions, type SuggestionCard } from './suggestion';
 
 export type ValidationResult =
   | { ok: true }

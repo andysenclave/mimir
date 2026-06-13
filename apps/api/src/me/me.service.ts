@@ -10,6 +10,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from './entities/auth-user.entity';
 import type { UserProfileGql, WatchlistItemGql } from './entities/profile.entity';
 
+function averageQuizScore(progresses: Array<{ quizScore: number | null }>): number {
+  const scores = progresses
+    .map((p) => p.quizScore)
+    .filter((s): s is number => s !== null);
+  if (scores.length === 0) return 0;
+  return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
+}
+
 @Injectable()
 export class MeService {
   constructor(private readonly prisma: PrismaService) {}
@@ -30,7 +38,7 @@ export class MeService {
 
   /** MM-036 — aggregated profile data for the Profile tab. */
   async getProfile(userId: string): Promise<UserProfileGql> {
-    const [user, budget, holdings, orders, watchlistRows] = await Promise.all([
+    const [user, budget, holdings, orders, watchlistRows, courseProgresses] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: { id: true, email: true, displayName: true, createdAt: true },
@@ -52,6 +60,10 @@ export class MeService {
         orderBy: { createdAt: 'asc' },
         take: 3,
         select: { symbol: true, alertEnabled: true },
+      }),
+      this.prisma.courseProgress.findMany({
+        where: { userId },
+        select: { completedAt: true, quizScore: true },
       }),
     ]);
 
@@ -82,8 +94,9 @@ export class MeService {
         totalReturnPct,
         budgetTierLabel: tierLabel,
         cashRemaining: budget?.cashRemaining.toNumber() ?? 0,
-        coursesDone: 0,   // Phase 2
-        quizScore: 0,     // Phase 2
+        coursesDone: courseProgresses.filter((p) => p.completedAt !== null).length,
+        // Average of best quiz scores (percentage) across attempted courses; 0 until first attempt.
+        quizScore: averageQuizScore(courseProgresses),
       },
       watchlist: watchlistRows.map((w) => ({
         symbol: w.symbol,
