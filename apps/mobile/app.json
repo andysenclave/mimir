@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Mimir",
+    "slug": "mimir",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "scheme": "mimir",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#09090B"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "in.thimple.mimir",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "android": {
+      "package": "in.thimple.mimir",
+      "adaptiveIcon": {
+        "backgroundColor": "#09090B"
+      },
+      "permissions": [
+        "NOTIFICATIONS"
+      ]
+    },
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#6366F1",
+          "defaultChannel": "mimir-default"
+        }
+      ],
+      "@sentry/react-native"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

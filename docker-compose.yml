@@ -1,0 +1,47 @@
+# Mimir — local development infra.
+# Postgres mirrors Neon (production at ap-south-1 Mumbai for DPDP).
+# Redis mirrors Upstash (caching, pub/sub from MM-023, BullMQ from MM-021).
+#
+# Usage:
+#   docker-compose up -d              # start everything in background
+#   docker-compose logs -f postgres   # tail postgres logs
+#   docker-compose down               # stop (data persists in volumes)
+#   docker-compose down -v            # stop + drop volumes (fresh DB next start)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mimir-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: mimir
+      POSTGRES_PASSWORD: mimir
+      POSTGRES_DB: mimir
+    volumes:
+      - mimir-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mimir -d mimir"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mimir-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - mimir-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  mimir-postgres-data:
+  mimir-redis-data:

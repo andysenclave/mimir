@@ -1,0 +1,304 @@
+// Mimir API — Prisma schema (Phase 1 entities + ADR-0001 fallback auth tables).
+// CLAUDE.md §7 — table names PascalCase singular; CUID IDs; Decimal(18,4) for money;
+// soft-delete adds deletedAt; @@index on FKs and frequently queried fields.
+//
+// ┌────────────────────────────────────────────────────────────────────────────┐
+// │ AuthCredential + RefreshToken are TEMPORARY per ADR-0001 — they get       │
+// │ DROPPED when the Heimdal SDK swap lands (MM-S2-AUTH-SWAP).                 │
+// │ Real Heimdal SDK packages confirmed available:                             │
+// │   @andysenclave/heimdal-rn / @andysenclave/heimdal-nest                    │
+// │ Migration: _sprint-1-scaffold/HEIMDAL-SWAP-PLAN.md (step 3).               │
+// └────────────────────────────────────────────────────────────────────────────┘
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums (CLAUDE.md §5 — `as const` in shared, native enums in Prisma OK since
+// Prisma owns the DB-level type. Mobile imports the `as const` mirror.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum BudgetTier {
+  TIER_10K
+  TIER_25K
+  TIER_50K
+  TIER_1L
+  CUSTOM
+}
+
+enum BudgetStatus {
+  ACTIVE
+  EXPIRED
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  PENDING
+  FILLED
+  REJECTED
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum NotificationCategory {
+  STREAK
+  BUDGET
+  PRICE_ALERT
+  PORTFOLIO_EVENT
+  TRANSACTIONAL
+  EDUCATIONAL
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  displayName     String?
+  avatarUrl       String?
+  ageAttested     Boolean  @default(false)
+  termsAccepted   Boolean  @default(false)
+  onboardingDone  Boolean  @default(false)
+  streakCount     Int      @default(0)
+  lastOpenedAt    DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  // ADR-0001 fallback — removed when Heimdal swap lands
+  authCredential  AuthCredential?
+  refreshTokens   RefreshToken[]
+
+  monthlyBudgets  MonthlyBudget[]
+  holdings        Holding[]
+  orders          Order[]
+  watchlistItems  Watchlist[]
+  devices         UserDevice[]
+  notificationPreferences NotificationPreferences?
+  aiInsightCalls  AIAuditLog[]
+
+  @@index([email])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADR-0001 fallback auth tables — swap to Heimdal in Sprint 2 (MM-S2-AUTH-SWAP)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AuthCredential {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  email         String   @unique
+  passwordHash  String
+  emailVerified Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  tokenHash   String   @unique // SHA-256 of the refresh token
+  expiresAt   DateTime
+  revoked     Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revoked])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trading domain (CLAUDE.md §8)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MonthlyBudget {
+  id            String       @id @default(cuid())
+  userId        String
+  tier          BudgetTier
+  amount        Decimal      @db.Decimal(18, 4)
+  cashRemaining Decimal      @db.Decimal(18, 4)
+  status        BudgetStatus @default(ACTIVE)
+  cycleStart    DateTime
+  cycleEnd      DateTime
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders        Order[]
+
+  @@index([userId, status])
+  @@index([cycleEnd])
+}
+
+model Holding {
+  id           String   @id @default(cuid())
+  userId       String
+  symbol       String
+  quantity     Int
+  avgBuyPrice  Decimal  @db.Decimal(18, 4)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@index([userId])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  userId            String
+  budgetId          String
+  symbol            String
+  type              OrderType
+  quantity          Int
+  priceAtExecution  Decimal     @db.Decimal(18, 4)
+  orderValue        Decimal     @db.Decimal(18, 4)
+  realizedPnl       Decimal?    @db.Decimal(18, 4)
+  status            OrderStatus @default(FILLED)
+  failureReason     String?
+  // CLAUDE.md §8 invariant 2 — clientGeneratedOrderId enforces idempotency
+  correlationId     String      @unique
+  executedAt        DateTime    @default(now())
+
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget            MonthlyBudget  @relation(fields: [budgetId], references: [id])
+
+  @@index([userId, executedAt])
+  @@index([symbol, executedAt])
+  @@index([budgetId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Market & watchlist (MM-021..023, MM-037)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Watchlist {
+  id           String   @id @default(cuid())
+  userId       String
+  symbol       String
+  alertEnabled Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notifications (MM-018, MM-040..043)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model UserDevice {
+  id           String         @id @default(cuid())
+  userId       String
+  expoPushToken String        @unique
+  platform     DevicePlatform
+  appVersion   String?
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  lastSeenAt   DateTime?
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationPreferences {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+
+  // Per-category toggles (transactional always on; cannot be disabled)
+  streakEnabled       Boolean @default(true)
+  budgetEnabled       Boolean @default(true)
+  priceAlertsEnabled  Boolean @default(true)
+  portfolioEvtEnabled Boolean @default(true)
+  educationalEnabled  Boolean @default(true)
+
+  // Quiet hours (HH:MM 24h, IST). Defaults 22:00 → 07:00 per CLAUDE.md §10.
+  quietHoursStart     String  @default("22:00")
+  quietHoursEnd       String  @default("07:00")
+
+  // Daily cap default 2; hard ceiling 3 — CLAUDE.md §10.
+  dailyCap            Int     @default(2)
+
+  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now())
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI insights (CLAUDE.md §9, MM-032..034)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AIInsight {
+  id          String   @id @default(cuid())
+  symbol      String   @unique
+  body        String   @db.Text
+  promptVersion String
+  model       String
+  generatedAt DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
+
+model AIAuditLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  symbol        String?
+  prompt        String   @db.Text
+  response      String?  @db.Text
+  promptVersion String
+  model         String
+  tokenCount    Int?
+  latencyMs     Int?
+  cachedHit     Boolean  @default(false)
+  failureReason String?
+
+  createdAt     DateTime @default(now())
+
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([symbol, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Feature flags cache (MM-017)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model FeatureFlagCache {
+  id         String   @id @default(cuid())
+  flagKey    String   @unique
+  payload    Json
+  refreshedAt DateTime @default(now())
+}

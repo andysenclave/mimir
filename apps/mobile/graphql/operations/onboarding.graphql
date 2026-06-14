@@ -1,0 +1,17 @@
+mutation CompleteOnboarding($input: CompleteOnboardingInput!) {
+  completeOnboarding(input: $input) {
+    user {
+      id
+      email
+      displayName
+      onboardingDone
+    }
+    budget {
+      id
+      tier
+      amount
+      cycleStart
+      cycleEnd
+    }
+  }
+}
