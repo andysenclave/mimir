@@ -6,8 +6,9 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "target": "ES2022",
-    "types": ["expo-router/types", "react-native"],
+    "types": ["expo-router/types", "react-native", "nativewind/types"],
     "noEmit": true,
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
       "@mimir/shared": ["../../packages/shared/src/index.ts"],
@@ -15,6 +16,6 @@
       "@mimir/graphql-schema": ["../../packages/graphql-schema/src/index.ts"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", ".expo/types/**/*.ts", "expo-env.d.ts"],
   "exclude": ["node_modules", "dist", ".expo", "android", "ios"]
 }

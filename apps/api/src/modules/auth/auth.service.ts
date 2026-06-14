@@ -9,11 +9,11 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcrypt';
 
-import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import type { LoginDto } from './dto/login.dto';
 import type { SignupDto } from './dto/signup.dto';
+import type { Env } from '../../config/env.schema';
 
 export type AuthResponse = {
   accessToken: string;

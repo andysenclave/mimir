@@ -6,8 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy, type StrategyOptionsWithoutRequest } from 'passport-jwt';
 
-import type { Env } from '../../config/env.schema';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
+import type { Env } from '../../config/env.schema';
 
 type JwtPayload = {
   sub: string;

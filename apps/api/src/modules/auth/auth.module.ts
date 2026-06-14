@@ -15,14 +15,16 @@
 
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, type JwtModuleOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-
-import type { Env } from '../../config/env.schema';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './auth.strategy';
+
+import type { Env } from '../../config/env.schema';
+
+type JwtExpiresIn = NonNullable<NonNullable<JwtModuleOptions['signOptions']>['expiresIn']>;
 
 @Module({
   imports: [
@@ -30,12 +32,14 @@ import { JwtStrategy } from './auth.strategy';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>) => {
+      useFactory: (config: ConfigService<Env, true>): JwtModuleOptions => {
         const secret = config.get<string | undefined>('JWT_SECRET');
         const privateKey = config.get<string | undefined>('JWT_PRIVATE_KEY');
         const publicKey = config.get<string | undefined>('JWT_PUBLIC_KEY');
         const issuer = config.get<string>('JWT_ISSUER');
-        const expiresIn = config.get<string>('JWT_ACCESS_TTL');
+        // Zod validates JWT_ACCESS_TTL as a string, but jsonwebtoken's strict
+        // template-literal type for ms-style durations needs an explicit cast.
+        const expiresIn = config.get<string>('JWT_ACCESS_TTL') as JwtExpiresIn;
 
         if (privateKey && publicKey) {
           return {

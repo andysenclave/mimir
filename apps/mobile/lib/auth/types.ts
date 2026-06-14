@@ -17,4 +17,10 @@ export interface AuthAPI {
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
+  /**
+   * Apply a partial update to the in-memory user (e.g., after onboarding flips
+   * `onboardingDone`). Avoids a /me round-trip when the server already returned
+   * the updated user shape.
+   */
+  updateUser: (partial: Partial<AuthUser> & { id: string }) => void;
 }

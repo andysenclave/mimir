@@ -9,8 +9,9 @@ import { getMainDefinition } from '@apollo/client/utilities';
 import Constants from 'expo-constants';
 import { createClient } from 'graphql-ws';
 
-import { authLink, errorLink } from './links';
 import { tokenStorage } from '../auth/storage';
+
+import { authLink, errorLink } from './links';
 
 function readEnvUrl(name: string, fallback: string): string {
   const fromExpoExtra = (Constants.expoConfig?.extra as Record<string, string> | undefined)?.[name];

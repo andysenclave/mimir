@@ -1,9 +1,11 @@
-// Mimir mobile — Metro config tuned for pnpm + turborepo monorepo.
+// Mimir mobile — Metro config tuned for pnpm + turborepo monorepo + NativeWind.
 // Standard Expo SDK 52+ monorepo recipe: watch the workspace root, use isolated
 // node_modules paths, disable hierarchical lookup so Metro stops walking parents.
 
-const { getDefaultConfig } = require('expo/metro-config');
 const path = require('node:path');
+
+const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
@@ -20,4 +22,6 @@ config.resolver.disableHierarchicalLookup = true;
 // Allow .cjs (some pnpm-resolved deps) and ensure source extensions are explicit.
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'cjs', 'mjs'];
 
-module.exports = config;
+module.exports = withNativeWind(config, {
+  input: './global.css',
+});
