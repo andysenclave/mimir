@@ -12,7 +12,6 @@ export default function Index(): React.JSX.Element {
   if (isLoading) return <View className="flex-1 bg-bg-primary" />;
   if (!isAuthenticated) return <Redirect href="/login" />;
   if (user?.onboardingDone === false) return <Redirect href="/budget" />;
-  // MM-014 lands /(tabs)/portfolio. Until then, post-login stub absorbs the
-  // landing so the app doesn't 404 on first run.
-  return <Redirect href="/post-login" />;
+  // MM-014 tabs shell is live — go straight to portfolio.
+  return <Redirect href="/(tabs)/portfolio" />;
 }
