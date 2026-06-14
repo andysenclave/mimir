@@ -24,7 +24,7 @@ function readableSignupError(err: unknown): string {
       return 'Network error — check your connection and try again.';
     }
   }
-  return 'Something went wrong creating your account. Please try again.';
+  return "We couldn't create your account just now. Please try again.";
 }
 
 export function useSignupForm(): UseSignupFormResult {

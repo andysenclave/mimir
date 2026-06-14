@@ -23,15 +23,17 @@ function TickerBarSkeleton(): React.JSX.Element {
 
 // ─── Sector heatmap ───────────────────────────────────────────────────────────
 
+// Fixed-length placeholder rows. Stable semantic keys avoid index-based keys
+// for a static, never-reordered list.
+const HEATMAP_TILES = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'] as const;
+
 function SectorHeatmapSkeleton(): React.JSX.Element {
   return (
     <View className="px-4">
       <Skeleton width={56} height={14} className="mb-3" />
       <View className="flex-row flex-wrap gap-2">
-        {Array.from({ length: 10 }).map((_, i) => (
-          // Static list — index key is intentional here (no reordering).
-          // eslint-disable-next-line react/no-array-index-key
-          <Skeleton key={i} className="flex-1 basis-[46%]" height={54} />
+        {HEATMAP_TILES.map((tile) => (
+          <Skeleton key={tile} className="flex-1 basis-[46%]" height={54} />
         ))}
       </View>
     </View>
@@ -40,14 +42,16 @@ function SectorHeatmapSkeleton(): React.JSX.Element {
 
 // ─── Top movers ───────────────────────────────────────────────────────────────
 
+// Fixed-length placeholder rows — stable semantic keys, no index keys.
+const MOVER_ROWS = ['r1', 'r2', 'r3', 'r4', 'r5'] as const;
+
 function MoverSectionSkeleton(): React.JSX.Element {
   return (
     <View className="rounded-xl bg-bg-secondary px-4 pb-2 pt-3">
       <Skeleton width={60} height={12} className="mb-3" />
       <View className="h-px bg-border-subtle mb-2" />
-      {Array.from({ length: 5 }).map((_, i) => (
-        // eslint-disable-next-line react/no-array-index-key
-        <View key={i} className="flex-row items-center justify-between py-3">
+      {MOVER_ROWS.map((row) => (
+        <View key={row} className="flex-row items-center justify-between py-3">
           <View className="gap-1.5">
             <Skeleton width={64} height={13} />
             <Skeleton width={96} height={11} />

@@ -13,4 +13,17 @@ export type SheetConfig =
       cashRemaining: number;
       onConfirm: () => Promise<void>;
     }
+  | {
+      // MM-059 — sign-out confirmation. onConfirm clears tokens + routes to login.
+      type: 'signOut';
+      onConfirm: () => Promise<void> | void;
+    }
+  | {
+      // MM-058 — generic destructive confirmation (e.g. delete account).
+      type: 'confirm';
+      title: string;
+      message: string;
+      confirmLabel: string;
+      onConfirm: () => Promise<void> | void;
+    }
   | null;

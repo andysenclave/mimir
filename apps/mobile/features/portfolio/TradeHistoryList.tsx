@@ -1,12 +1,17 @@
 // Trade history tab — FlashList of all orders, newest first.
 // MM-038: cursor pagination (load-more) + tap-row detail modal.
 
+import { FlashList } from '@shopify/flash-list';
+import { router } from 'expo-router';
+import { Receipt } from 'lucide-react-native';
 import { useState } from 'react';
 import { View, Text, Modal, Pressable } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { useOrderHistoryQuery, type OrderHistoryQuery } from '@/graphql/generated';
-import { TradeHistoryRow } from './TradeHistoryRow';
+
 import { TradeDetailModal } from './TradeDetailModal';
+import { TradeHistoryRow } from './TradeHistoryRow';
+
+import { EmptyState } from '@/components/layout/EmptyState';
+import { useOrderHistoryQuery, type OrderHistoryQuery } from '@/graphql/generated';
 
 type TradeItem = OrderHistoryQuery['orderHistory'][number];
 
@@ -54,11 +59,15 @@ export function TradeHistoryList(): React.JSX.Element {
 
   if (trades.length === 0) {
     return (
-      <View className="mt-4 px-4 items-center py-8 gap-2">
-        <Text className="text-text-secondary text-sm font-medium">No trades yet</Text>
-        <Text className="text-text-tertiary text-xs text-center">
-          Place your first order from the Market tab to see your history here.
-        </Text>
+      <View className="mt-4">
+        <EmptyState
+          inline
+          icon={Receipt}
+          heading="No trades yet"
+          message="Place your first order from the Market tab to see your history here."
+          ctaLabel="Browse Market"
+          onCtaPress={() => router.replace('/(tabs)/market' as never)}
+        />
       </View>
     );
   }

@@ -3,8 +3,13 @@
 // Screen wraps content in <SheetProvider>; feature components call useSheet().
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { OrderConfirmationSheet } from '@/features/trading/OrderConfirmationSheet';
+
+import { ConfirmSheet } from './ConfirmSheet';
+
 import type { SheetConfig } from './types';
+
+import { SignOutSheet } from '@/features/profile/SignOutSheet';
+import { OrderConfirmationSheet } from '@/features/trading/OrderConfirmationSheet';
 
 interface SheetContextValue {
   openSheet: (config: NonNullable<SheetConfig>) => void;
@@ -29,6 +34,29 @@ export function SheetProvider({ children }: { children: ReactNode }): React.JSX.
           quantity={sheet.quantity}
           ltp={sheet.ltp}
           cashRemaining={sheet.cashRemaining}
+          onConfirm={async () => {
+            await sheet.onConfirm();
+            closeSheet();
+          }}
+          onCancel={closeSheet}
+        />
+      )}
+
+      {sheet?.type === 'signOut' && (
+        <SignOutSheet
+          onConfirm={async () => {
+            await sheet.onConfirm();
+            closeSheet();
+          }}
+          onCancel={closeSheet}
+        />
+      )}
+
+      {sheet?.type === 'confirm' && (
+        <ConfirmSheet
+          title={sheet.title}
+          message={sheet.message}
+          confirmLabel={sheet.confirmLabel}
           onConfirm={async () => {
             await sheet.onConfirm();
             closeSheet();

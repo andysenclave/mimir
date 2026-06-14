@@ -2,16 +2,18 @@
 // MM-037 — Alert toggle + remove from watchlist.
 // Live LTP via stockPrice subscription in useProfile.
 
-import { View, Text, Pressable, Switch } from 'react-native';
-import { TrendingUp } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 import { formatINR } from '@mimir/shared';
-import { tokens } from '@/theme/tokens';
+import { useRouter } from 'expo-router';
+import { Eye } from 'lucide-react-native';
+import { View, Text, Pressable, Switch } from 'react-native';
+
+import type { WatchlistItem } from './hooks/useProfile';
+
+import { EmptyState } from '@/components/layout/EmptyState';
 import {
   useRemoveFromWatchlistMutation,
   useToggleWatchlistAlertMutation,
 } from '@/graphql/generated';
-import type { WatchlistItem } from './hooks/useProfile';
 
 interface ProfileWatchlistSectionProps {
   watchlist: WatchlistItem[];
@@ -105,12 +107,13 @@ export function ProfileWatchlistSection({
         <Text className="text-xs font-medium uppercase tracking-wide text-text-tertiary mb-2">
           Watchlist
         </Text>
-        <View className="rounded-2xl bg-surface-elevated px-4 py-8 items-center gap-2">
-          <TrendingUp color={tokens.text.tertiary} size={24} strokeWidth={1.5} />
-          <Text className="text-sm text-text-secondary font-medium">No stocks watched yet</Text>
-          <Text className="text-xs text-text-tertiary text-center">
-            Tap any stock on the Market tab and add it to your watchlist.
-          </Text>
+        <View className="rounded-2xl bg-surface-elevated">
+          <EmptyState
+            inline
+            icon={Eye}
+            heading="No stocks watched yet"
+            message="Tap any stock on the Market tab and add it to your watchlist."
+          />
         </View>
       </View>
     );

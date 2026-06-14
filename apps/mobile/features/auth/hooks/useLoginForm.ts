@@ -24,7 +24,7 @@ function readableAuthError(err: unknown): string {
       return 'Network error — check your connection and try again.';
     }
   }
-  return 'Something went wrong signing in. Please try again.';
+  return "We couldn't sign you in just now. Please try again.";
 }
 
 export function useLoginForm(): UseLoginFormResult {

@@ -1,26 +1,53 @@
 # MM-036 — Profile tab queries.
 
+fragment ProfileFields on UserProfileGql {
+  id
+  email
+  displayName
+  memberSince
+  stats {
+    totalReturnInr
+    totalReturnPct
+    budgetTierLabel
+    budgetTierId
+    preferredTierId
+    cashRemaining
+    coursesDone
+    quizScore
+  }
+  watchlist {
+    symbol
+    ltp
+    changePct
+    alertEnabled
+  }
+}
+
 query Profile {
   profile {
-    id
-    email
-    displayName
-    memberSince
-    stats {
-      totalReturnInr
-      totalReturnPct
-      budgetTierLabel
-      cashRemaining
-      coursesDone
-      quizScore
-    }
-    watchlist {
-      symbol
-      ltp
-      changePct
-      alertEnabled
-    }
+    ...ProfileFields
   }
+}
+
+# MM-058 — Account + Trading Preferences mutations.
+mutation UpdateDisplayName($name: String!) {
+  updateDisplayName(name: $name) {
+    ...ProfileFields
+  }
+}
+
+mutation UpdatePreferredTier($tier: String!) {
+  updatePreferredTier(tier: $tier) {
+    ...ProfileFields
+  }
+}
+
+mutation RequestAccountDeletion {
+  requestAccountDeletion
+}
+
+mutation RequestDataExport {
+  requestDataExport
 }
 
 # aiInsight — MM-032. Placed here because it's consumed by invest screen but

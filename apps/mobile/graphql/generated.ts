@@ -180,14 +180,22 @@ export type Mutation = {
   registerPushDevice: UserDevice;
   /** Remove a stock from the authenticated user's watchlist. Idempotent — returns true even if the symbol was not present. */
   removeFromWatchlist: Scalars['Boolean']['output'];
+  /** DPDP account deletion request — soft-deletes now; hard cascade-delete within 30 days. */
+  requestAccountDeletion: Scalars['Boolean']['output'];
+  /** DPDP data-export request — records the request; export bundle produced offline. */
+  requestDataExport: Scalars['Boolean']['output'];
   /** Score a quiz server-side. Best score is kept on CourseProgress. */
   submitQuiz: QuizResult;
   /** Enable or disable price-alert pushes for a watchlist item. */
   toggleWatchlistAlert: WatchlistItemGql;
   /** Add virtual cash to the current month's budget. Fails if the top-up would exceed the tier ceiling (budget.amount). */
   topupBudget: MonthlyBudget;
+  /** Update the display name (1–40 chars). */
+  updateDisplayName: UserProfileGql;
   /** Update the authenticated user's notification preferences. Partial update — only provided fields are changed. TRANSACTIONAL notifications cannot be disabled. */
   updateNotificationPreferences: NotificationPreferencesGql;
+  /** Set the budget tier for the next cycle. Applied by the monthly rollover; the active budget is untouched (CLAUDE.md §8). */
+  updatePreferredTier: UserProfileGql;
 };
 
 export type MutationAddToWatchlistArgs = {
@@ -227,8 +235,16 @@ export type MutationTopupBudgetArgs = {
   input: TopupBudgetInput;
 };
 
+export type MutationUpdateDisplayNameArgs = {
+  name: Scalars['String']['input'];
+};
+
 export type MutationUpdateNotificationPreferencesArgs = {
   input: UpdateNotificationPreferencesInput;
+};
+
+export type MutationUpdatePreferredTierArgs = {
+  tier: Scalars['String']['input'];
 };
 
 export type NotificationPreferencesGql = {
@@ -366,9 +382,11 @@ export type PortfolioUpdate = {
 
 export type ProfileStatsGql = {
   __typename?: 'ProfileStatsGql';
+  budgetTierId: Scalars['String']['output'];
   budgetTierLabel: Scalars['String']['output'];
   cashRemaining: Scalars['Float']['output'];
   coursesDone: Scalars['Float']['output'];
+  preferredTierId: Maybe<Scalars['String']['output']>;
   quizScore: Scalars['Float']['output'];
   totalReturnInr: Scalars['Float']['output'];
   totalReturnPct: Scalars['Float']['output'];
@@ -913,6 +931,32 @@ export type PortfolioUpdateSubscription = {
   };
 };
 
+export type ProfileFieldsFragment = {
+  __typename?: 'UserProfileGql';
+  id: string;
+  email: string;
+  displayName: string | null;
+  memberSince: number;
+  stats: {
+    __typename?: 'ProfileStatsGql';
+    totalReturnInr: number;
+    totalReturnPct: number;
+    budgetTierLabel: string;
+    budgetTierId: string;
+    preferredTierId: string | null;
+    cashRemaining: number;
+    coursesDone: number;
+    quizScore: number;
+  };
+  watchlist: Array<{
+    __typename?: 'WatchlistItemGql';
+    symbol: string;
+    ltp: number | null;
+    changePct: number | null;
+    alertEnabled: boolean;
+  }>;
+};
+
 export type ProfileQueryVariables = Exact<{ [key: string]: never }>;
 
 export type ProfileQuery = {
@@ -928,6 +972,8 @@ export type ProfileQuery = {
       totalReturnInr: number;
       totalReturnPct: number;
       budgetTierLabel: string;
+      budgetTierId: string;
+      preferredTierId: string | null;
       cashRemaining: number;
       coursesDone: number;
       quizScore: number;
@@ -941,6 +987,83 @@ export type ProfileQuery = {
     }>;
   };
 };
+
+export type UpdateDisplayNameMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+export type UpdateDisplayNameMutation = {
+  __typename?: 'Mutation';
+  updateDisplayName: {
+    __typename?: 'UserProfileGql';
+    id: string;
+    email: string;
+    displayName: string | null;
+    memberSince: number;
+    stats: {
+      __typename?: 'ProfileStatsGql';
+      totalReturnInr: number;
+      totalReturnPct: number;
+      budgetTierLabel: string;
+      budgetTierId: string;
+      preferredTierId: string | null;
+      cashRemaining: number;
+      coursesDone: number;
+      quizScore: number;
+    };
+    watchlist: Array<{
+      __typename?: 'WatchlistItemGql';
+      symbol: string;
+      ltp: number | null;
+      changePct: number | null;
+      alertEnabled: boolean;
+    }>;
+  };
+};
+
+export type UpdatePreferredTierMutationVariables = Exact<{
+  tier: Scalars['String']['input'];
+}>;
+
+export type UpdatePreferredTierMutation = {
+  __typename?: 'Mutation';
+  updatePreferredTier: {
+    __typename?: 'UserProfileGql';
+    id: string;
+    email: string;
+    displayName: string | null;
+    memberSince: number;
+    stats: {
+      __typename?: 'ProfileStatsGql';
+      totalReturnInr: number;
+      totalReturnPct: number;
+      budgetTierLabel: string;
+      budgetTierId: string;
+      preferredTierId: string | null;
+      cashRemaining: number;
+      coursesDone: number;
+      quizScore: number;
+    };
+    watchlist: Array<{
+      __typename?: 'WatchlistItemGql';
+      symbol: string;
+      ltp: number | null;
+      changePct: number | null;
+      alertEnabled: boolean;
+    }>;
+  };
+};
+
+export type RequestAccountDeletionMutationVariables = Exact<{ [key: string]: never }>;
+
+export type RequestAccountDeletionMutation = {
+  __typename?: 'Mutation';
+  requestAccountDeletion: boolean;
+};
+
+export type RequestDataExportMutationVariables = Exact<{ [key: string]: never }>;
+
+export type RequestDataExportMutation = { __typename?: 'Mutation'; requestDataExport: boolean };
 
 export type AiInsightQueryVariables = Exact<{
   symbol: Scalars['String']['input'];
@@ -1102,6 +1225,30 @@ export type PlaceOrderMutation = {
   };
 };
 
+export const ProfileFieldsFragmentDoc = gql`
+  fragment ProfileFields on UserProfileGql {
+    id
+    email
+    displayName
+    memberSince
+    stats {
+      totalReturnInr
+      totalReturnPct
+      budgetTierLabel
+      budgetTierId
+      preferredTierId
+      cashRemaining
+      coursesDone
+      quizScore
+    }
+    watchlist {
+      symbol
+      ltp
+      changePct
+      alertEnabled
+    }
+  }
+`;
 export const CoursesDocument = gql`
   query Courses {
     courses {
@@ -2234,26 +2381,10 @@ export type PortfolioUpdateSubscriptionResult =
 export const ProfileDocument = gql`
   query Profile {
     profile {
-      id
-      email
-      displayName
-      memberSince
-      stats {
-        totalReturnInr
-        totalReturnPct
-        budgetTierLabel
-        cashRemaining
-        coursesDone
-        quizScore
-      }
-      watchlist {
-        symbol
-        ltp
-        changePct
-        alertEnabled
-      }
+      ...ProfileFields
     }
   }
+  ${ProfileFieldsFragmentDoc}
 `;
 
 /**
@@ -2305,6 +2436,195 @@ export type ProfileQueryHookResult = ReturnType<typeof useProfileQuery>;
 export type ProfileLazyQueryHookResult = ReturnType<typeof useProfileLazyQuery>;
 export type ProfileSuspenseQueryHookResult = ReturnType<typeof useProfileSuspenseQuery>;
 export type ProfileQueryResult = Apollo.QueryResult<ProfileQuery, ProfileQueryVariables>;
+export const UpdateDisplayNameDocument = gql`
+  mutation UpdateDisplayName($name: String!) {
+    updateDisplayName(name: $name) {
+      ...ProfileFields
+    }
+  }
+  ${ProfileFieldsFragmentDoc}
+`;
+export type UpdateDisplayNameMutationFn = Apollo.MutationFunction<
+  UpdateDisplayNameMutation,
+  UpdateDisplayNameMutationVariables
+>;
+
+/**
+ * __useUpdateDisplayNameMutation__
+ *
+ * To run a mutation, you first call `useUpdateDisplayNameMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUpdateDisplayNameMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [updateDisplayNameMutation, { data, loading, error }] = useUpdateDisplayNameMutation({
+ *   variables: {
+ *      name: // value for 'name'
+ *   },
+ * });
+ */
+export function useUpdateDisplayNameMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    UpdateDisplayNameMutation,
+    UpdateDisplayNameMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<UpdateDisplayNameMutation, UpdateDisplayNameMutationVariables>(
+    UpdateDisplayNameDocument,
+    options,
+  );
+}
+export type UpdateDisplayNameMutationHookResult = ReturnType<typeof useUpdateDisplayNameMutation>;
+export type UpdateDisplayNameMutationResult = Apollo.MutationResult<UpdateDisplayNameMutation>;
+export type UpdateDisplayNameMutationOptions = Apollo.BaseMutationOptions<
+  UpdateDisplayNameMutation,
+  UpdateDisplayNameMutationVariables
+>;
+export const UpdatePreferredTierDocument = gql`
+  mutation UpdatePreferredTier($tier: String!) {
+    updatePreferredTier(tier: $tier) {
+      ...ProfileFields
+    }
+  }
+  ${ProfileFieldsFragmentDoc}
+`;
+export type UpdatePreferredTierMutationFn = Apollo.MutationFunction<
+  UpdatePreferredTierMutation,
+  UpdatePreferredTierMutationVariables
+>;
+
+/**
+ * __useUpdatePreferredTierMutation__
+ *
+ * To run a mutation, you first call `useUpdatePreferredTierMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUpdatePreferredTierMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [updatePreferredTierMutation, { data, loading, error }] = useUpdatePreferredTierMutation({
+ *   variables: {
+ *      tier: // value for 'tier'
+ *   },
+ * });
+ */
+export function useUpdatePreferredTierMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    UpdatePreferredTierMutation,
+    UpdatePreferredTierMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<UpdatePreferredTierMutation, UpdatePreferredTierMutationVariables>(
+    UpdatePreferredTierDocument,
+    options,
+  );
+}
+export type UpdatePreferredTierMutationHookResult = ReturnType<
+  typeof useUpdatePreferredTierMutation
+>;
+export type UpdatePreferredTierMutationResult = Apollo.MutationResult<UpdatePreferredTierMutation>;
+export type UpdatePreferredTierMutationOptions = Apollo.BaseMutationOptions<
+  UpdatePreferredTierMutation,
+  UpdatePreferredTierMutationVariables
+>;
+export const RequestAccountDeletionDocument = gql`
+  mutation RequestAccountDeletion {
+    requestAccountDeletion
+  }
+`;
+export type RequestAccountDeletionMutationFn = Apollo.MutationFunction<
+  RequestAccountDeletionMutation,
+  RequestAccountDeletionMutationVariables
+>;
+
+/**
+ * __useRequestAccountDeletionMutation__
+ *
+ * To run a mutation, you first call `useRequestAccountDeletionMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useRequestAccountDeletionMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [requestAccountDeletionMutation, { data, loading, error }] = useRequestAccountDeletionMutation({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useRequestAccountDeletionMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    RequestAccountDeletionMutation,
+    RequestAccountDeletionMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    RequestAccountDeletionMutation,
+    RequestAccountDeletionMutationVariables
+  >(RequestAccountDeletionDocument, options);
+}
+export type RequestAccountDeletionMutationHookResult = ReturnType<
+  typeof useRequestAccountDeletionMutation
+>;
+export type RequestAccountDeletionMutationResult =
+  Apollo.MutationResult<RequestAccountDeletionMutation>;
+export type RequestAccountDeletionMutationOptions = Apollo.BaseMutationOptions<
+  RequestAccountDeletionMutation,
+  RequestAccountDeletionMutationVariables
+>;
+export const RequestDataExportDocument = gql`
+  mutation RequestDataExport {
+    requestDataExport
+  }
+`;
+export type RequestDataExportMutationFn = Apollo.MutationFunction<
+  RequestDataExportMutation,
+  RequestDataExportMutationVariables
+>;
+
+/**
+ * __useRequestDataExportMutation__
+ *
+ * To run a mutation, you first call `useRequestDataExportMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useRequestDataExportMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [requestDataExportMutation, { data, loading, error }] = useRequestDataExportMutation({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useRequestDataExportMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    RequestDataExportMutation,
+    RequestDataExportMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<RequestDataExportMutation, RequestDataExportMutationVariables>(
+    RequestDataExportDocument,
+    options,
+  );
+}
+export type RequestDataExportMutationHookResult = ReturnType<typeof useRequestDataExportMutation>;
+export type RequestDataExportMutationResult = Apollo.MutationResult<RequestDataExportMutation>;
+export type RequestDataExportMutationOptions = Apollo.BaseMutationOptions<
+  RequestDataExportMutation,
+  RequestDataExportMutationVariables
+>;
 export const AiInsightDocument = gql`
   query AiInsight($symbol: String!) {
     aiInsight(symbol: $symbol) {

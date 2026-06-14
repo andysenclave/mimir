@@ -82,4 +82,44 @@ export class MeResolver {
     if (user === null) throw new Error('User context missing despite LocalAuthGuard');
     return this.meService.toggleWatchlistAlert(user.id, symbol, enabled);
   }
+
+  // ─── MM-058 — Account / Trading Preferences / Privacy ──────────────────────
+
+  @Mutation(() => UserProfileGql, { description: 'Update the display name (1–40 chars).' })
+  updateDisplayName(
+    @CurrentUser() user: AuthUserContext | null,
+    @Args('name') name: string,
+  ): Promise<UserProfileGql> {
+    if (user === null) throw new Error('User context missing despite LocalAuthGuard');
+    return this.meService.updateDisplayName(user.id, name);
+  }
+
+  @Mutation(() => UserProfileGql, {
+    description:
+      'Set the budget tier for the next cycle. Applied by the monthly rollover; ' +
+      'the active budget is untouched (CLAUDE.md §8).',
+  })
+  updatePreferredTier(
+    @CurrentUser() user: AuthUserContext | null,
+    @Args('tier') tier: string,
+  ): Promise<UserProfileGql> {
+    if (user === null) throw new Error('User context missing despite LocalAuthGuard');
+    return this.meService.updatePreferredTier(user.id, tier as never);
+  }
+
+  @Mutation(() => Boolean, {
+    description: 'DPDP account deletion request — soft-deletes now; hard cascade-delete within 30 days.',
+  })
+  requestAccountDeletion(@CurrentUser() user: AuthUserContext | null): Promise<boolean> {
+    if (user === null) throw new Error('User context missing despite LocalAuthGuard');
+    return this.meService.requestAccountDeletion(user.id);
+  }
+
+  @Mutation(() => Boolean, {
+    description: 'DPDP data-export request — records the request; export bundle produced offline.',
+  })
+  requestDataExport(@CurrentUser() user: AuthUserContext | null): boolean {
+    if (user === null) throw new Error('User context missing despite LocalAuthGuard');
+    return this.meService.requestDataExport(user.id);
+  }
 }

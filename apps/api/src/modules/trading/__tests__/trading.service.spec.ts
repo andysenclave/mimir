@@ -141,6 +141,10 @@ const mockPrisma = {
   budgetEvent: {
     create: jest.fn(),
   },
+  // MM-058 — rollover clears User.preferredTier after applying it.
+  user: {
+    update: jest.fn(),
+  },
   $transaction: jest.fn(),
 };
 
@@ -657,15 +661,16 @@ describe('TradingService', () => {
   describe('runMonthlyRollover', () => {
     it('marks existing budgets EXPIRED with cashRemaining=0 and creates new ACTIVE ones', async () => {
       const budgets = [
-        { id: 'b1', userId: 'u1', tier: 'TIER_50K', amount: new Prisma.Decimal(50_000) },
-        { id: 'b2', userId: 'u2', tier: 'TIER_10K', amount: new Prisma.Decimal(10_000) },
+        { id: 'b1', userId: 'u1', tier: 'TIER_50K', amount: new Prisma.Decimal(50_000), user: { preferredTier: null } },
+        { id: 'b2', userId: 'u2', tier: 'TIER_10K', amount: new Prisma.Decimal(10_000), user: { preferredTier: null } },
       ];
       mockPrisma.monthlyBudget.findMany
         .mockResolvedValueOnce(budgets)
         .mockResolvedValueOnce([]);
       mockPrisma.monthlyBudget.update.mockResolvedValue({});
       mockPrisma.monthlyBudget.create.mockResolvedValue({});
-      mockPrisma.$transaction.mockResolvedValue([{}, {}, {}]);
+      mockPrisma.user.update.mockResolvedValue({});
+      mockPrisma.$transaction.mockResolvedValue([{}, {}, {}, {}]);
 
       const result = await service.runMonthlyRollover();
 
@@ -674,21 +679,46 @@ describe('TradingService', () => {
       // Each call should include cashRemaining: 0 on the EXPIRED row
       expect(mockPrisma.$transaction).toHaveBeenCalledTimes(2);
       const firstCallArgs = mockPrisma.$transaction.mock.calls[0]?.[0] as unknown[];
-      // [expire op, create op, budgetEvent ROLLOVER op] — MM-035 added the audit row.
-      expect(firstCallArgs).toHaveLength(3);
+      // [expire, create, budgetEvent ROLLOVER (MM-035), clear preferredTier (MM-058)].
+      expect(firstCallArgs).toHaveLength(4);
+    });
+
+    it('applies the user preferred tier to the new budget and clears it (MM-058)', async () => {
+      const budgets = [
+        { id: 'b1', userId: 'u1', tier: 'TIER_10K', amount: new Prisma.Decimal(10_000), user: { preferredTier: 'TIER_50K' } },
+      ];
+      mockPrisma.monthlyBudget.findMany.mockResolvedValueOnce(budgets).mockResolvedValueOnce([]);
+      mockPrisma.monthlyBudget.create.mockResolvedValue({});
+      mockPrisma.user.update.mockResolvedValue({});
+      mockPrisma.$transaction.mockResolvedValue([{}, {}, {}, {}]);
+
+      await service.runMonthlyRollover();
+
+      // The new budget is created at the preferred tier / amount, not the old one.
+      const createArg = mockPrisma.monthlyBudget.create.mock.calls[0]?.[0] as {
+        data: { tier: string; amount: Prisma.Decimal; cashRemaining: Prisma.Decimal };
+      };
+      expect(createArg.data.tier).toBe('TIER_50K');
+      expect(createArg.data.amount.toNumber()).toBe(50_000);
+      expect(createArg.data.cashRemaining.toNumber()).toBe(50_000);
+      // And the preference is consumed.
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: { preferredTier: null },
+      });
     });
 
     it('increments failed count and continues when a single budget rollover throws', async () => {
       const budgets = [
-        { id: 'b1', userId: 'u1', tier: 'TIER_50K', amount: new Prisma.Decimal(50_000) },
-        { id: 'b2', userId: 'u2', tier: 'TIER_10K', amount: new Prisma.Decimal(10_000) },
+        { id: 'b1', userId: 'u1', tier: 'TIER_50K', amount: new Prisma.Decimal(50_000), user: { preferredTier: null } },
+        { id: 'b2', userId: 'u2', tier: 'TIER_10K', amount: new Prisma.Decimal(10_000), user: { preferredTier: null } },
       ];
       mockPrisma.monthlyBudget.findMany
         .mockResolvedValueOnce(budgets)
         .mockResolvedValueOnce([]);
       mockPrisma.$transaction
         .mockRejectedValueOnce(new Error('DB constraint'))
-        .mockResolvedValueOnce([{}, {}]);
+        .mockResolvedValueOnce([{}, {}, {}, {}]);
 
       const result = await service.runMonthlyRollover();
 

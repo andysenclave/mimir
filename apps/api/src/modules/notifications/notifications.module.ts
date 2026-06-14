@@ -10,6 +10,10 @@ import {
   BUDGET_NUDGE_QUEUE,
 } from '../../jobs/budget-nudge.processor';
 import {
+  EducationalTriggersProcessor,
+  EDUCATIONAL_TRIGGERS_QUEUE,
+} from '../../jobs/educational-triggers.processor';
+import {
   OrderFillNotificationProcessor,
   ORDER_FILL_QUEUE,
 } from '../../jobs/order-fill-notification.processor';
@@ -34,6 +38,7 @@ import { NotificationsService } from './notifications.service';
     BullModule.registerQueue({ name: BUDGET_NUDGE_QUEUE }),
     BullModule.registerQueue({ name: PORTFOLIO_EVENTS_QUEUE }),
     BullModule.registerQueue({ name: ORDER_FILL_QUEUE }),
+    BullModule.registerQueue({ name: EDUCATIONAL_TRIGGERS_QUEUE }),
   ],
   providers: [
     NotificationsService,
@@ -44,6 +49,8 @@ import { NotificationsService } from './notifications.service';
     BudgetNudgeProcessor,
     PortfolioEventsProcessor,
     OrderFillNotificationProcessor,
+    // MM-057 worker
+    EducationalTriggersProcessor,
   ],
   exports: [NotificationsService, NotificationDispatchService],
 })

@@ -32,6 +32,14 @@ export class ProfileStatsGql {
   @Field()
   budgetTierLabel!: string;
 
+  /** Active budget tier id e.g. "TIER_50K" — drives the Trading Preferences selection. */
+  @Field()
+  budgetTierId!: string;
+
+  /** Desired tier for next cycle (MM-058), if the user changed it; null otherwise. */
+  @Field(() => String, { nullable: true })
+  preferredTierId?: string | null;
+
   /** Remaining cash in the current monthly budget. */
   @Field(() => Float)
   cashRemaining!: number;

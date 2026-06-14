@@ -841,6 +841,10 @@ interface ConceptDef {
   orderIndex: number;
   // lessonTitle used to look up lessonId after lessons are seeded
   lessonTitle: string;
+  // MM-057 — optional educational-trigger tagging. When a held stock's daily move
+  // clears the threshold, users who studied this concept's course get a nudge.
+  triggerKind?: 'PRICE_DROP' | 'PRICE_SURGE';
+  triggerThreshold?: number;
 }
 
 const CONCEPT_DEFS: ConceptDef[] = [
@@ -848,8 +852,8 @@ const CONCEPT_DEFS: ConceptDef[] = [
   { orderIndex: 2,  lessonTitle: 'What Is a Stock?',                    title: 'Dividend',               body: 'A cash payment made to shareholders from company profits, proportional to the number of shares held. Not all profitable companies pay dividends — many reinvest profits for growth.' },
   { orderIndex: 3,  lessonTitle: 'Primary vs Secondary Market',         title: 'IPO',                    body: 'Initial Public Offering — the first time a company sells its shares to the public. Money from an IPO goes to the company (or selling shareholders in an OFS).' },
   { orderIndex: 4,  lessonTitle: 'Primary vs Secondary Market',         title: 'Listing',                body: 'After an IPO, shares begin trading on an exchange. The company\'s shares are said to be listed from that point onward.' },
-  { orderIndex: 5,  lessonTitle: 'Bulls, Bears, and Market Cycles',     title: 'Bull market',            body: 'A sustained rise of 20%+ from a recent trough, typically driven by strong earnings, low rates, and optimistic sentiment.' },
-  { orderIndex: 6,  lessonTitle: 'Bulls, Bears, and Market Cycles',     title: 'Bear market',            body: 'A sustained decline of 20%+ from a recent peak, typically driven by deteriorating fundamentals, rising rates, or panic.' },
+  { orderIndex: 5,  lessonTitle: 'Bulls, Bears, and Market Cycles',     title: 'Bull market',            body: 'A sustained rise of 20%+ from a recent trough, typically driven by strong earnings, low rates, and optimistic sentiment.', triggerKind: 'PRICE_SURGE', triggerThreshold: 8 },
+  { orderIndex: 6,  lessonTitle: 'Bulls, Bears, and Market Cycles',     title: 'Bear market',            body: 'A sustained decline of 20%+ from a recent peak, typically driven by deteriorating fundamentals, rising rates, or panic.', triggerKind: 'PRICE_DROP', triggerThreshold: 8 },
   { orderIndex: 7,  lessonTitle: 'Market Hours and Trading Sessions',   title: 'Pre-open session',       body: 'The 15-minute window before regular trading where orders are collected and the opening equilibrium price is calculated. No trades execute during order entry (09:00–09:08).' },
   { orderIndex: 8,  lessonTitle: 'Market Hours and Trading Sessions',   title: 'VWAP',                   body: 'Volume-Weighted Average Price — the average price weighted by volume. NSE uses the last-30-minute VWAP to calculate the official closing price.' },
   { orderIndex: 9,  lessonTitle: 'What Brokers Do',                     title: 'Discount broker',        body: 'A SEBI-registered broker that provides execution-only services at a flat fee per trade (₹20 or less), without research or advisory services. Zerodha and Upstox are the largest in India.' },
@@ -868,7 +872,7 @@ const CONCEPT_DEFS: ConceptDef[] = [
   { orderIndex: 22, lessonTitle: 'Common Valuation Pitfalls',           title: 'EV/EBITDA',              body: 'Enterprise Value divided by Earnings Before Interest, Tax, Depreciation, and Amortisation. Accounts for a company\'s full capital structure (equity + debt) and is useful for comparing companies with different leverage.' },
   { orderIndex: 23, lessonTitle: 'Common Valuation Pitfalls',           title: 'Normalised earnings',   body: 'Average earnings over a full business cycle, used instead of peak or trough EPS to avoid valuation errors for cyclical companies (metals, chemicals, commodities).' },
   { orderIndex: 24, lessonTitle: 'Why Diversification Matters',         title: 'Unsystematic risk',      body: 'Company-specific risk that can be reduced by holding multiple uncorrelated stocks — a drug recall, management fraud, or client loss affects one company, not the whole market.' },
-  { orderIndex: 25, lessonTitle: 'Why Diversification Matters',         title: 'Systematic risk',        body: 'Market-wide risk from macroeconomic events (recessions, rate hikes, geopolitical shocks) that affects all equities. Cannot be diversified away by holding more stocks.' },
+  { orderIndex: 25, lessonTitle: 'Why Diversification Matters',         title: 'Systematic risk',        body: 'Market-wide risk from macroeconomic events (recessions, rate hikes, geopolitical shocks) that affects all equities. Cannot be diversified away by holding more stocks.', triggerKind: 'PRICE_DROP', triggerThreshold: 6 },
   { orderIndex: 26, lessonTitle: 'Correlation Basics',                  title: 'Correlation coefficient', body: 'A number between -1 and +1 measuring how two assets\' returns move relative to each other. Assets closer to 0 provide better diversification benefit than those close to +1.' },
   { orderIndex: 27, lessonTitle: 'Sector Rotation in Indian Markets',   title: 'Sector rotation',        body: 'The process by which institutional money shifts between sectors as economic conditions change — e.g., from cyclicals in early recovery to defensives in a slowdown.' },
   { orderIndex: 28, lessonTitle: 'Equal-Weight vs Market-Cap Weighting','title': 'Market-cap weighting', body: 'Portfolio allocation proportional to each company\'s market capitalisation — the method used by NIFTY 50 and most passive index funds. Self-rebalancing but concentrates in the largest winners.' },
@@ -945,12 +949,21 @@ async function main(): Promise<void> {
 
     await prisma.concept.upsert({
       where: { orderIndex: def.orderIndex },
-      update: { title: def.title, body: def.body, lessonId: lessonId ?? null },
+      update: {
+        title: def.title,
+        body: def.body,
+        lessonId: lessonId ?? null,
+        // MM-057 — set when tagged, explicitly cleared otherwise so re-runs are idempotent.
+        triggerKind: def.triggerKind ?? null,
+        triggerThreshold: def.triggerThreshold ?? null,
+      },
       create: {
         title: def.title,
         body: def.body,
         orderIndex: def.orderIndex,
         lessonId: lessonId ?? null,
+        triggerKind: def.triggerKind ?? null,
+        triggerThreshold: def.triggerThreshold ?? null,
       },
     });
     console.log(`  Concept: [${def.orderIndex}] ${def.title}`);

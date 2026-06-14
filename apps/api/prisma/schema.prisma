@@ -77,6 +77,9 @@ model User {
   onboardingDone  Boolean  @default(false)
   streakCount     Int      @default(0)
   lastOpenedAt    DateTime?
+  // MM-058 — desired budget tier for the NEXT cycle. Applied (and cleared) by the
+  // monthly rollover cron. Never mutates the ACTIVE budget (CLAUDE.md §8).
+  preferredTier   BudgetTier?
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -490,9 +493,17 @@ model Concept {
   lessonId   String?
   orderIndex Int      @unique
 
+  // MM-057 — educational-trigger tagging. When a held stock's daily move matches
+  // the condition, users who studied this concept's course get a one-off nudge to
+  // revisit it. null triggerKind = concept never triggers a notification.
+  // 'PRICE_DROP' fires on changePct <= -triggerThreshold; 'PRICE_SURGE' on >= +threshold.
+  triggerKind      String?
+  triggerThreshold Float?
+
   createdAt  DateTime @default(now())
 
   lesson     Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
 
   @@index([orderIndex])
+  @@index([triggerKind])
 }

@@ -2,9 +2,10 @@
 // Prisma fetch keyed off the @CurrentUser id.
 
 import { BUDGET_TIERS, type BudgetTierId } from '@mimir/shared';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { WatchlistLimitException, WatchlistItemNotFoundException } from '../common/exceptions/watchlist.exceptions';
+import { PostHogService } from '../observability/posthog.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import type { AuthUser } from './entities/auth-user.entity';
@@ -18,9 +19,70 @@ function averageQuizScore(progresses: Array<{ quizScore: number | null }>): numb
   return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
 }
 
+const DISPLAY_NAME_MAX = 40;
+// Tiers a user may switch to post-onboarding. CUSTOM is set only during onboarding.
+const SELECTABLE_TIERS: BudgetTierId[] = ['TIER_10K', 'TIER_25K', 'TIER_50K', 'TIER_1L'];
+
 @Injectable()
 export class MeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly posthog: PostHogService,
+  ) {}
+
+  // ─── MM-058 — Account / Trading Preferences / Privacy ───────────────────────
+
+  /** Update the user's display name. Trimmed; 1–40 chars. */
+  async updateDisplayName(userId: string, name: string): Promise<UserProfileGql> {
+    const trimmed = name.trim();
+    if (trimmed.length === 0 || trimmed.length > DISPLAY_NAME_MAX) {
+      throw new BadRequestException(`Display name must be 1–${DISPLAY_NAME_MAX} characters`);
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { displayName: trimmed },
+    });
+    return this.getProfile(userId);
+  }
+
+  /**
+   * Set the desired budget tier for the NEXT cycle (MM-058 + answered scope).
+   * Stored on User.preferredTier and applied by the monthly rollover cron —
+   * the ACTIVE budget is never mutated here (CLAUDE.md §8).
+   */
+  async updatePreferredTier(userId: string, tier: BudgetTierId): Promise<UserProfileGql> {
+    if (!SELECTABLE_TIERS.includes(tier)) {
+      throw new BadRequestException(`Tier must be one of ${SELECTABLE_TIERS.join(', ')}`);
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      // Prisma enum and our BudgetTierId share the same string values.
+      data: { preferredTier: tier as unknown as never },
+    });
+    return this.getProfile(userId);
+  }
+
+  /**
+   * DPDP soft-delete (answered scope): stamp deletedAt now; a later background
+   * job performs the 30-day cascade hard-delete. Idempotent.
+   */
+  async requestAccountDeletion(userId: string): Promise<boolean> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: new Date() },
+    });
+    this.posthog.capture(userId, 'account_deletion_requested', {});
+    return true;
+  }
+
+  /**
+   * DPDP data-export request. Phase-2 MVP records the request (analytics) and
+   * returns true; the actual export bundle is produced by a back-office job.
+   */
+  requestDataExport(userId: string): boolean {
+    this.posthog.capture(userId, 'data_export_requested', {});
+    return true;
+  }
 
   async getMe(userId: string): Promise<AuthUser> {
     const user = await this.prisma.user.findUnique({
@@ -41,7 +103,7 @@ export class MeService {
     const [user, budget, holdings, orders, watchlistRows, courseProgresses] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true, displayName: true, createdAt: true },
+        select: { id: true, email: true, displayName: true, createdAt: true, preferredTier: true },
       }),
       this.prisma.monthlyBudget.findFirst({
         where: { userId, status: 'ACTIVE' },
@@ -83,6 +145,7 @@ export class MeService {
 
     const tierId = (budget?.tier ?? 'TIER_50K') as BudgetTierId;
     const tierLabel = BUDGET_TIERS[tierId]?.label ?? '—';
+    const preferredTierId = user.preferredTier as BudgetTierId | null;
 
     return {
       id: user.id,
@@ -93,6 +156,8 @@ export class MeService {
         totalReturnInr: realizedPnl,
         totalReturnPct,
         budgetTierLabel: tierLabel,
+        budgetTierId: tierId,
+        preferredTierId: preferredTierId,
         cashRemaining: budget?.cashRemaining.toNumber() ?? 0,
         coursesDone: courseProgresses.filter((p) => p.completedAt !== null).length,
         // Average of best quiz scores (percentage) across attempted courses; 0 until first attempt.

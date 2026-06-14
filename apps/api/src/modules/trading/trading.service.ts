@@ -23,7 +23,7 @@
 // Prompt 14 (service-method): Validate → Resolve → Execute → Return.
 // Prompt 29 (trading-domain-rules): locked validation chain order must not change.
 
-import { placeOrderInputSchema } from '@mimir/shared';
+import { BUDGET_TIERS, placeOrderInputSchema, type BudgetTierId } from '@mimir/shared';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -458,7 +458,14 @@ export class TradingService {
         take: TradingService.ROLLOVER_BATCH_SIZE,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
         orderBy: { id: 'asc' },
-        select: { id: true, userId: true, tier: true, amount: true },
+        select: {
+          id: true,
+          userId: true,
+          tier: true,
+          amount: true,
+          // MM-058 — desired tier for this new cycle (set via updatePreferredTier).
+          user: { select: { preferredTier: true } },
+        },
       });
 
       if (batch.length === 0) break;
@@ -466,6 +473,17 @@ export class TradingService {
       for (const budget of batch) {
         try {
           const month = `${cycleStart.getUTCFullYear()}-${String(cycleStart.getUTCMonth() + 1).padStart(2, '0')}`;
+
+          // Apply the user's preferred tier to the NEW budget only — the EXPIRED
+          // budget and all holdings are untouched (CLAUDE.md §8). CUSTOM is never
+          // a preferred value (the mutation rejects it), so the fixed amount applies.
+          const pref = budget.user.preferredTier as BudgetTierId | null;
+          const applyPref = pref !== null && pref !== 'CUSTOM';
+          const newTier = applyPref ? pref : budget.tier;
+          const newAmount = applyPref
+            ? new Prisma.Decimal(BUDGET_TIERS[pref].amount)
+            : budget.amount;
+
           await this.prisma.$transaction([
             // Mark old budget EXPIRED and zero cashRemaining (STORIES.md MM-027).
             // Order history rows preserve the full spending audit trail.
@@ -476,9 +494,9 @@ export class TradingService {
             this.prisma.monthlyBudget.create({
               data: {
                 userId: budget.userId,
-                tier: budget.tier,
-                amount: budget.amount,
-                cashRemaining: budget.amount,
+                tier: newTier,
+                amount: newAmount,
+                cashRemaining: newAmount,
                 status: 'ACTIVE',
                 cycleStart,
                 cycleEnd,
@@ -487,6 +505,11 @@ export class TradingService {
             // MM-035 AC: BudgetEvent row per cycle for audit trail
             this.prisma.budgetEvent.create({
               data: { userId: budget.userId, type: 'ROLLOVER', month },
+            }),
+            // MM-058 — consume the preference once applied so it doesn't re-fire.
+            this.prisma.user.update({
+              where: { id: budget.userId },
+              data: { preferredTier: null },
             }),
           ]);
           processed++;

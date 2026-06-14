@@ -17,12 +17,7 @@ export default function MarketTab(): React.JSX.Element {
 
   // Network/GraphQL error with no cached data to fall back on.
   if (error !== undefined && overview === undefined) {
-    return (
-      <ErrorState
-        message="Can't load market data right now. Check your connection."
-        onRetry={onRefresh}
-      />
-    );
+    return <ErrorState variant="network" onRetry={onRefresh} />;
   }
 
   // Stale data guard — protects against unexpected Apollo states.

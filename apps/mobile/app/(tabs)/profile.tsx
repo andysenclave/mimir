@@ -1,9 +1,10 @@
 // MM-036 — Profile tab screen (replaces MM-014 placeholder).
 // Thin screen: wires useProfile hook to ProfileContent (prompt 20 / prompt 4).
-// Sign-out confirmation is inline Alert; MM-059 replaces with bottom sheet in Sprint 4.
+// MM-059 — wrapped in SheetProvider so the sign-out confirmation bottom sheet works.
 
-import { ProfileContent, ProfileSkeleton, useProfile } from '@/features/profile';
 import { ErrorState } from '@/components/layout/ErrorState';
+import { ProfileContent, ProfileSkeleton, useProfile } from '@/features/profile';
+import { SheetProvider } from '@/features/sheets/SheetProvider';
 
 export default function ProfileTab(): React.JSX.Element {
   const { profile, loading, error, refreshing, onRefresh } = useProfile();
@@ -14,10 +15,8 @@ export default function ProfileTab(): React.JSX.Element {
   if (!profile) return <ProfileSkeleton />;
 
   return (
-    <ProfileContent
-      profile={profile}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-    />
+    <SheetProvider>
+      <ProfileContent profile={profile} refreshing={refreshing} onRefresh={onRefresh} />
+    </SheetProvider>
   );
 }

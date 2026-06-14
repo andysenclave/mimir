@@ -179,6 +179,16 @@ type Mutation {
   """
   removeFromWatchlist(symbol: String!): Boolean!
 
+  """
+  DPDP account deletion request — soft-deletes now; hard cascade-delete within 30 days.
+  """
+  requestAccountDeletion: Boolean!
+
+  """
+  DPDP data-export request — records the request; export bundle produced offline.
+  """
+  requestDataExport: Boolean!
+
   """Score a quiz server-side. Best score is kept on CourseProgress."""
   submitQuiz(input: SubmitQuizInput!): QuizResult!
 
@@ -190,10 +200,18 @@ type Mutation {
   """
   topupBudget(input: TopupBudgetInput!): MonthlyBudget!
 
+  """Update the display name (1–40 chars)."""
+  updateDisplayName(name: String!): UserProfileGql!
+
   """
   Update the authenticated user's notification preferences. Partial update — only provided fields are changed. TRANSACTIONAL notifications cannot be disabled.
   """
   updateNotificationPreferences(input: UpdateNotificationPreferencesInput!): NotificationPreferencesGql!
+
+  """
+  Set the budget tier for the next cycle. Applied by the monthly rollover; the active budget is untouched (CLAUDE.md §8).
+  """
+  updatePreferredTier(tier: String!): UserProfileGql!
 }
 
 type NotificationPreferencesGql {
@@ -359,9 +377,11 @@ type PortfolioUpdate {
 }
 
 type ProfileStatsGql {
+  budgetTierId: String!
   budgetTierLabel: String!
   cashRemaining: Float!
   coursesDone: Float!
+  preferredTierId: String
   quizScore: Float!
   totalReturnInr: Float!
   totalReturnPct: Float!

@@ -1,11 +1,13 @@
 // MM-036 — Settings section: entry points for sub-screens + sign out.
-// Sign out shows native Alert for confirmation (MM-059 bottom sheet deferred to Sprint 4).
+// MM-059 — sign out opens a confirmation bottom sheet (via SheetProvider), not a native Alert.
 
-import { View, Text, Pressable, Alert } from 'react-native';
-import { Bell, ChevronRight, LogOut, Shield, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { tokens } from '@/theme/tokens';
+import { Bell, ChevronRight, LogOut, Shield, SlidersHorizontal, User } from 'lucide-react-native';
+import { View, Text, Pressable } from 'react-native';
+
+import { useSheet } from '@/features/sheets/SheetProvider';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { tokens } from '@/theme/tokens';
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -34,20 +36,10 @@ function SettingsRow({ icon, label, onPress, destructive = false }: SettingsRowP
 export function ProfileSettingsSection(): React.JSX.Element {
   const router = useRouter();
   const { signOut } = useAuth();
+  const { openSheet } = useSheet();
 
   const confirmSignOut = (): void => {
-    Alert.alert(
-      'Sign out?',
-      "You'll need to sign in again to access your portfolio.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: () => void signOut(),
-        },
-      ],
-    );
+    openSheet({ type: 'signOut', onConfirm: () => signOut() });
   };
 
   return (
@@ -60,6 +52,11 @@ export function ProfileSettingsSection(): React.JSX.Element {
           icon={<User color={tokens.text.secondary} size={18} strokeWidth={1.75} />}
           label="Account"
           onPress={() => router.push('/profile/account')}
+        />
+        <SettingsRow
+          icon={<SlidersHorizontal color={tokens.text.secondary} size={18} strokeWidth={1.75} />}
+          label="Trading Preferences"
+          onPress={() => router.push('/profile/trading-preferences')}
         />
         <SettingsRow
           icon={<Bell color={tokens.text.secondary} size={18} strokeWidth={1.75} />}
