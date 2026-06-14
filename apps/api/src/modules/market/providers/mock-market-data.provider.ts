@@ -32,9 +32,9 @@ export class MockMarketDataProvider extends MarketDataProvider {
     this.logger.debug(`[mock] getQuote ${symbol}`);
     const base = seedPrice(symbol);
     const jitter = (Math.random() - 0.5) * base * 0.01; // ±0.5%
-    const ltp = parseFloat((base + jitter).toFixed(2));
-    const change = parseFloat(jitter.toFixed(2));
-    const changePct = parseFloat(((jitter / base) * 100).toFixed(4));
+    const ltp = Number.parseFloat((base + jitter).toFixed(2));
+    const change = Number.parseFloat(jitter.toFixed(2));
+    const changePct = Number.parseFloat(((jitter / base) * 100).toFixed(4));
     return { symbol, ltp, open: base, high: ltp + 5, low: ltp - 5, close: base, change, changePct, fetchedAt: new Date() };
   }
 

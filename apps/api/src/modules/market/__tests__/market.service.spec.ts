@@ -5,8 +5,8 @@
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-import { PUB_SUB } from '../../../pubsub/pubsub.module';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { PUB_SUB } from '../../../pubsub/pubsub.module';
 import { MarketService, STOCK_TICK_CHANNEL, type PollResult } from '../market.service';
 import { MarketDataProvider, type MarketOverview, type StockQuote } from '../providers/market-data-provider.interface';
 
@@ -98,7 +98,7 @@ describe('MarketService', () => {
 
   describe('pollAndPublish — market open, fresh tick', () => {
     it('publishes to Redis PubSub and upserts MarketSnapshot', async () => {
-      const quote = makeQuote('RELIANCE', 2840.50);
+      const quote = makeQuote('RELIANCE', 2840.5);
       mockProvider.getQuote.mockResolvedValueOnce(quote);
 
       const result = await service.pollAndPublish(['RELIANCE'], marketOpen());
@@ -106,14 +106,14 @@ describe('MarketService', () => {
       expect(result).toEqual<PollResult>({ published: 1, skipped: 0, failed: 0 });
       expect(mockPubSub.publish).toHaveBeenCalledWith(
         STOCK_TICK_CHANNEL,
-        expect.objectContaining({ stockPrice: expect.objectContaining({ symbol: 'RELIANCE', ltp: 2840.50 }) }),
+        expect.objectContaining({ stockPrice: expect.objectContaining({ symbol: 'RELIANCE', ltp: 2840.5 }) }),
       );
       expect(mockPrisma.marketSnapshot.upsert).toHaveBeenCalledTimes(1);
       expect(mockPrisma.marketSnapshot.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { symbol: 'RELIANCE' },
-          create: expect.objectContaining({ symbol: 'RELIANCE', ltp: 2840.50 }),
-          update: expect.objectContaining({ ltp: 2840.50 }),
+          create: expect.objectContaining({ symbol: 'RELIANCE', ltp: 2840.5 }),
+          update: expect.objectContaining({ ltp: 2840.5 }),
         }),
       );
     });
@@ -135,7 +135,7 @@ describe('MarketService', () => {
 
   describe('pollAndPublish — dedup', () => {
     it('skips publish when LTP is identical within the same minute', async () => {
-      const ltp = 2840.50;
+      const ltp = 2840.5;
       const now = marketOpen();
       mockProvider.getQuote
         .mockResolvedValueOnce(makeQuote('RELIANCE', ltp))

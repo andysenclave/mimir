@@ -5,13 +5,14 @@
 
 import { isMarketOpen } from '@mimir/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
-import { PUB_SUB } from '../../pubsub/pubsub.module';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PUB_SUB } from '../../pubsub/pubsub.module';
 
-import { MarketDataProvider, type MarketOverview, type StockQuote } from './providers/market-data-provider.interface';
 import { StockQuoteGql } from './entities/stock-quote.entity';
+import { MarketDataProvider, type MarketOverview, type StockQuote } from './providers/market-data-provider.interface';
+
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 export interface PollResult {
   published: number;
@@ -68,12 +69,12 @@ export class MarketService {
       if (symbol === undefined) continue;
 
       if (result.status === 'rejected') {
-        this.logger.warn(`Quote fetch failed for ${symbol}`, { reason: String((result as PromiseRejectedResult).reason) });
+        this.logger.warn(`Quote fetch failed for ${symbol}`, { reason: String((result).reason) });
         failed++;
         continue;
       }
 
-      const quote = (result as PromiseFulfilledResult<StockQuote>).value;
+      const quote = (result).value;
 
       if (this.isDuplicate(symbol, quote.ltp, now)) {
         skipped++;
@@ -179,7 +180,7 @@ export class MarketService {
   private isDuplicate(symbol: string, ltp: number, now: Date): boolean {
     const minuteKey = Math.floor(now.getTime() / 60_000);
     const last = this.lastPublished.get(symbol);
-    if (last !== undefined && last.ltp === ltp && last.minuteKey === minuteKey) {
+    if (last?.ltp === ltp && last.minuteKey === minuteKey) {
       return true;
     }
     this.lastPublished.set(symbol, { ltp, minuteKey });
