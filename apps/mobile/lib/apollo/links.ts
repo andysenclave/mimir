@@ -37,7 +37,6 @@ export const errorLink: ApolloLink = onError(
           // surface the error to the AuthProvider via cache eviction.
           void tokenStorage.clear();
         }
-
         if (__DEV__) console.warn(`[apollo] ${code}: ${err.message} @ ${operation.operationName}`);
       }
     }

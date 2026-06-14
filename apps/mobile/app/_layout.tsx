@@ -9,7 +9,6 @@
 // Auth-aware redirects live in the route groups themselves ((auth)/_layout for
 // public, (tabs)/_layout for private).
 
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
 
 import { ApolloProvider } from '@apollo/client';
@@ -17,6 +16,7 @@ import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { PostHogProvider } from 'posthog-react-native';
 import { useMemo } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getPostHog } from '../lib/analytics/init';
