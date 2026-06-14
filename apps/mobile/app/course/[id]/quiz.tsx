@@ -6,9 +6,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
+import { BackHeader } from '@/components/layout/BackHeader';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { useQuiz } from '@/features/learn/hooks/useQuiz';
+import { QuizSkeleton } from '@/features/learn/LearnSkeletons';
 import { QuizQuestion } from '@/features/learn/QuizQuestion';
 import { QuizResults } from '@/features/learn/QuizResults';
 import { tokens } from '@/theme/tokens';
@@ -20,15 +22,7 @@ export default function QuizScreen(): React.JSX.Element {
   if (quiz.phase === 'loading') {
     return (
       <ScreenContainer>
-        <View className="px-4 pt-4 gap-3">
-          <View className="h-2 w-full rounded-full bg-bg-secondary" />
-          <View className="h-7 w-56 rounded-lg bg-bg-secondary" />
-          <View className="mt-4 gap-2.5">
-            {[0, 1, 2, 3].map((i) => (
-              <View key={i} className="h-12 rounded-xl bg-bg-secondary" />
-            ))}
-          </View>
-        </View>
+        <QuizSkeleton />
       </ScreenContainer>
     );
   }
@@ -43,6 +37,7 @@ export default function QuizScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer>
+      <BackHeader />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}

@@ -4,6 +4,7 @@
 
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PUB_SUB } from '../../../pubsub/pubsub.module';
@@ -14,6 +15,17 @@ import { MarketDataProvider, type MarketOverview, type StockQuote } from '../pro
 
 function makeQuote(symbol: string, ltp: number): StockQuote {
   return { symbol, ltp, open: ltp, high: ltp, low: ltp, close: ltp, change: 0, changePct: 0, fetchedAt: new Date() };
+}
+
+/** A MarketSnapshot row as Prisma returns it — Decimal-typed numeric fields. */
+function makeSnapshotRow(symbol: string, changePct: number) {
+  return {
+    symbol,
+    ltp: new Prisma.Decimal(1000),
+    change: new Prisma.Decimal(changePct * 10),
+    changePct: new Prisma.Decimal(changePct),
+    fetchedAt: new Date(),
+  };
 }
 
 function makeOverview(): MarketOverview {
@@ -43,6 +55,7 @@ const mockPrisma = {
   marketSnapshot: {
     upsert: jest.fn().mockResolvedValue({}),
     findUnique: jest.fn().mockResolvedValue(null),
+    findMany: jest.fn().mockResolvedValue([]),
   },
 };
 
@@ -212,14 +225,40 @@ describe('MarketService', () => {
   // ─── getMarketOverview ────────────────────────────────────────────────────
 
   describe('getMarketOverview', () => {
-    it('fetches from provider on first call', async () => {
+    it('takes indices + sectors from the provider but movers from MarketSnapshot', async () => {
       const overview = makeOverview();
       mockProvider.getMarketOverview.mockResolvedValueOnce(overview);
+      // Snapshot holds real, tradeable equities (mix of up + down).
+      mockPrisma.marketSnapshot.findMany.mockResolvedValueOnce([
+        makeSnapshotRow('RELIANCE', 5.2),
+        makeSnapshotRow('TCS', 3.1),
+        makeSnapshotRow('INFY', -2.4),
+        makeSnapshotRow('WIPRO', -4.8),
+      ]);
 
       const result = await service.getMarketOverview(marketOpen());
 
-      expect(result).toEqual(overview);
+      // Indices + sectors are passed through from the provider.
+      expect(result.indices).toEqual(overview.indices);
+      expect(result.sectors).toEqual(overview.sectors);
+      // Movers are the snapshot equities, NOT the provider's index rows.
+      expect(result.topGainers.map((q) => q.symbol)).toEqual(['RELIANCE', 'TCS']);
+      expect(result.topLosers.map((q) => q.symbol)).toEqual(['WIPRO', 'INFY']);
       expect(mockProvider.getMarketOverview).toHaveBeenCalledTimes(1);
+    });
+
+    it('only surfaces tradeable symbols (restricted to TOP_100 universe)', async () => {
+      mockProvider.getMarketOverview.mockResolvedValueOnce(makeOverview());
+      mockPrisma.marketSnapshot.findMany.mockResolvedValueOnce([makeSnapshotRow('RELIANCE', 2.0)]);
+
+      const result = await service.getMarketOverview(marketOpen());
+
+      // The findMany query is scoped to the curated tradeable universe.
+      const whereArg = mockPrisma.marketSnapshot.findMany.mock.calls[0]?.[0] as {
+        where: { symbol: { in: string[] } };
+      };
+      expect(whereArg.where.symbol.in).toContain('RELIANCE');
+      expect(result.topGainers[0]?.symbol).toBe('RELIANCE');
     });
 
     it('returns cached data on second call within TTL', async () => {
@@ -244,6 +283,47 @@ describe('MarketService', () => {
       await service.getMarketOverview(later);
 
       expect(mockProvider.getMarketOverview).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // ─── searchStocks ──────────────────────────────────────────────────────────
+
+  describe('searchStocks', () => {
+    it('matches tradeable symbols by substring and enriches with snapshot price', async () => {
+      mockPrisma.marketSnapshot.findMany.mockResolvedValueOnce([makeSnapshotRow('RELIANCE', 1.5)]);
+
+      const result = await service.searchStocks('reli');
+
+      expect(result.map((s) => s.symbol)).toContain('RELIANCE');
+      const reliance = result.find((s) => s.symbol === 'RELIANCE');
+      expect(reliance?.changePct).toBe(1.5);
+      // Query is scoped to the matched tradeable symbols only.
+      const whereArg = mockPrisma.marketSnapshot.findMany.mock.calls[0]?.[0] as {
+        where: { symbol: { in: string[] } };
+      };
+      expect(whereArg.where.symbol.in).toContain('RELIANCE');
+    });
+
+    it('still returns a match with no snapshot (ltp 0) so it stays findable', async () => {
+      mockPrisma.marketSnapshot.findMany.mockResolvedValueOnce([]); // no snapshots yet
+
+      const result = await service.searchStocks('RELIANCE');
+
+      const reliance = result.find((s) => s.symbol === 'RELIANCE');
+      expect(reliance).toBeDefined();
+      expect(reliance?.ltp).toBe(0);
+    });
+
+    it('returns [] for an empty/whitespace query without hitting the DB', async () => {
+      const result = await service.searchStocks('   ');
+      expect(result).toEqual([]);
+      expect(mockPrisma.marketSnapshot.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns [] when nothing matches', async () => {
+      const result = await service.searchStocks('ZZZNOTAREALTICKER');
+      expect(result).toEqual([]);
+      expect(mockPrisma.marketSnapshot.findMany).not.toHaveBeenCalled();
     });
   });
 });

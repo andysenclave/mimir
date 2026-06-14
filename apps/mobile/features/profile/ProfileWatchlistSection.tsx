@@ -36,7 +36,7 @@ function WatchlistRow({ item, onRemove, onToggleAlert }: WatchlistRowProps): Rea
     <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
       {/* Tap → invest screen */}
       <Pressable
-        onPress={() => router.push(`/invest/${item.symbol}` as `${string}`)}
+        onPress={() => router.push({ pathname: '/invest/[symbol]', params: { symbol: item.symbol } })}
         className="flex-1 active:opacity-70"
       >
         <Text className="text-sm font-semibold text-text-primary">{item.symbol}</Text>

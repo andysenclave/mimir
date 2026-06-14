@@ -1,9 +1,10 @@
 // Single holding row — symbol, qty, avgBuyPrice, LTP, unrealized P&L.
 // Tappable → navigates to invest/[symbol].
 
-import { Pressable, View, Text } from 'react-native';
-import { router } from 'expo-router';
 import { formatINR } from '@mimir/shared';
+import { router } from 'expo-router';
+import { Pressable, View, Text } from 'react-native';
+
 import type { PortfolioHolding } from './hooks/usePortfolio';
 
 interface HoldingRowProps {
@@ -19,7 +20,7 @@ export function HoldingRow({ holding }: HoldingRowProps): React.JSX.Element {
 
   return (
     <Pressable
-      onPress={() => router.push(`/invest/${symbol}` as never)}
+      onPress={() => router.push({ pathname: '/invest/[symbol]', params: { symbol } })}
       className="flex-row items-center justify-between px-4 py-3.5 active:opacity-70 border-b border-border-subtle"
     >
       {/* Left: symbol + name + qty */}

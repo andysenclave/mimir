@@ -14,7 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
 
 import { ApolloProvider } from '@apollo/client';
-import { Slot } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { PostHogProvider } from 'posthog-react-native';
 import { useMemo } from 'react';
@@ -41,7 +41,10 @@ export default function RootLayout(): React.JSX.Element {
           <AuthProvider>
             <BottomSheetModalProvider>
               <StatusBar style="light" />
-              <Slot />
+              {/* Root Stack — gives every pushed route (course, invest, legal, …)
+                  a real navigation history so router.back() + swipe-back work.
+                  headerShown:false because screens render their own dark headers. */}
+              <Stack screenOptions={{ headerShown: false }} />
             </BottomSheetModalProvider>
           </AuthProvider>
         </ApolloProvider>

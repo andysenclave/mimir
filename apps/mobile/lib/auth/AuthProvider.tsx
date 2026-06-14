@@ -18,12 +18,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { authApi } from './api';
+import { onSessionExpired } from './session-events';
 import { tokenStorage } from './storage';
 
 import type { AuthAPI, Attestations } from './types';
 import type { AuthUser } from '@mimir/shared';
 
 import { identifyUser, resetAnalytics } from '@/lib/analytics/init';
+import { apolloClient } from '@/lib/apollo/client';
 import { setSentryUser } from '@/lib/sentry/init';
 
 const AuthContext = createContext<AuthAPI | null>(null);
@@ -65,6 +67,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     setSentryUser(next.id);
   }, []);
 
+  // Local-only sign-out used when the server reports the session is invalid.
+  // No /auth/logout call — the token is already dead. Clearing user flips
+  // isAuthenticated, so the route guards redirect to /login.
+  const clearSession = useCallback(() => {
+    void tokenStorage.clear();
+    // Drop the previous user's cached data so it can't leak into the next session.
+    void apolloClient.clearStore();
+    setUser(null);
+    resetAnalytics();
+    setSentryUser(null);
+  }, []);
+
+  // Bridge from the Apollo errorLink: any UNAUTHENTICATED response expires the
+  // session here so the user is taken to /login instead of being trapped on a
+  // failing authenticated screen.
+  useEffect(() => onSessionExpired(clearSession), [clearSession]);
+
   const signIn = useCallback(
     async (email: string, password: string) => {
       const res = await authApi.login(email, password);
@@ -102,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       }
     }
     await tokenStorage.clear();
+    await apolloClient.clearStore();
     setUser(null);
     resetAnalytics();
     setSentryUser(null);

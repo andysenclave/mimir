@@ -11,6 +11,7 @@ import { TradeDetailModal } from './TradeDetailModal';
 import { TradeHistoryRow } from './TradeHistoryRow';
 
 import { EmptyState } from '@/components/layout/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useOrderHistoryQuery, type OrderHistoryQuery } from '@/graphql/generated';
 
 type TradeItem = OrderHistoryQuery['orderHistory'][number];
@@ -51,8 +52,24 @@ export function TradeHistoryList(): React.JSX.Element {
 
   if (loading && trades.length === 0) {
     return (
-      <View className="mt-4 px-4 items-center py-8">
-        <Text className="text-text-tertiary text-sm">Loading history…</Text>
+      <View className="mt-4">
+        <Text className="text-text-secondary text-xs font-medium uppercase tracking-wide px-4 mb-2">
+          Trade History
+        </Text>
+        <View className="bg-surface-elevated rounded-2xl mx-4 overflow-hidden">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <View
+              key={i}
+              className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle"
+            >
+              <View className="gap-1.5">
+                <Skeleton className="w-24 h-4 rounded" />
+                <Skeleton className="w-16 h-3 rounded" />
+              </View>
+              <Skeleton className="w-20 h-4 rounded" />
+            </View>
+          ))}
+        </View>
       </View>
     );
   }

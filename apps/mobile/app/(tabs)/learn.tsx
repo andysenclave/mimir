@@ -6,9 +6,11 @@ import { ScrollView, Text, View } from 'react-native';
 
 import { ErrorState } from '@/components/layout/ErrorState';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { CourseCard } from '@/features/learn/CourseCard';
 import { useAISuggestions } from '@/features/learn/hooks/useAISuggestions';
 import { useLearnHub } from '@/features/learn/hooks/useLearnHub';
+import { LearnListSkeleton } from '@/features/learn/LearnSkeletons';
 import { SuggestionCard } from '@/features/learn/SuggestionCard';
 import { TodaysConceptCard } from '@/features/learn/TodaysConceptCard';
 
@@ -39,11 +41,7 @@ export default function LearnTab(): React.JSX.Element {
 
           {/* AI suggestions — hidden entirely on error or empty (MM-052) */}
           {suggestionsLoading && suggestions.length === 0 ? (
-            <View className="gap-3">
-              {[0, 1].map((i) => (
-                <View key={i} className="h-32 rounded-xl bg-bg-secondary" />
-              ))}
-            </View>
+            <LearnListSkeleton />
           ) : suggestions.length > 0 ? (
             <View className="gap-2">
               <Text className="text-sm font-medium uppercase tracking-widest text-text-tertiary">
@@ -70,7 +68,7 @@ export default function LearnTab(): React.JSX.Element {
             {loading && courses.length === 0 ? (
               <View className="gap-3">
                 {[0, 1, 2].map((i) => (
-                  <View key={i} className="h-32 rounded-xl bg-bg-secondary" />
+                  <Skeleton key={i} className="h-32 w-full rounded-xl" />
                 ))}
               </View>
             ) : (

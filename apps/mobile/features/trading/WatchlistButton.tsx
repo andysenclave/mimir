@@ -1,13 +1,22 @@
 // MM-037 — Watchlist toggle button for the invest screen header.
-// Reads the current profile watchlist from Apollo cache to determine is-watching state.
-// Optimistic update: UI flips immediately; server mutation confirms in background.
+// Reads is-watching from the cached Profile.watchlist and toggles it.
+//
+// The previous version evicted the whole `profile` cache field on toggle, which
+// (with the cache-only read here) wiped the very data this button renders from —
+// so the icon never reflected the change. We now surgically add/remove the item
+// in Profile.watchlist via cache.updateQuery, with optimistic responses so the
+// icon flips instantly. cache-first ensures the profile is loaded even if the
+// user reaches this screen before visiting the Profile tab.
 
-import { Pressable } from 'react-native';
 import { Bookmark } from 'lucide-react-native';
+import { Pressable } from 'react-native';
+
 import {
+  ProfileDocument,
   useAddToWatchlistMutation,
   useRemoveFromWatchlistMutation,
   useProfileQuery,
+  type ProfileQuery,
 } from '@/graphql/generated';
 import { tokens } from '@/theme/tokens';
 
@@ -16,29 +25,51 @@ interface WatchlistButtonProps {
 }
 
 export function WatchlistButton({ symbol }: WatchlistButtonProps): React.JSX.Element {
-  const { data } = useProfileQuery({ fetchPolicy: 'cache-only' });
-  const isWatching =
-    data?.profile.watchlist.some((w) => w.symbol === symbol) ?? false;
+  const { data } = useProfileQuery({ fetchPolicy: 'cache-first' });
+  const isWatching = data?.profile.watchlist.some((w) => w.symbol === symbol) ?? false;
 
   const [addToWatchlist, { loading: adding }] = useAddToWatchlistMutation({
     variables: { symbol },
-    // Optimistic: update cache so UI flips without waiting for server.
     optimisticResponse: {
-      addToWatchlist: { __typename: 'WatchlistItemGql', symbol, alertEnabled: true, ltp: null, changePct: null },
+      addToWatchlist: {
+        __typename: 'WatchlistItemGql',
+        symbol,
+        alertEnabled: true,
+        ltp: null,
+        changePct: null,
+      },
     },
     update(cache, { data: mutData }) {
-      if (!mutData?.addToWatchlist) return;
-      // Evict profile so the next profile query re-fetches with the new watchlist.
-      cache.evict({ fieldName: 'profile' });
-      cache.gc();
+      const added = mutData?.addToWatchlist;
+      if (!added) return;
+      cache.updateQuery<ProfileQuery>({ query: ProfileDocument }, (existing) => {
+        if (!existing?.profile) return existing;
+        if (existing.profile.watchlist.some((w) => w.symbol === added.symbol)) return existing;
+        return {
+          ...existing,
+          profile: {
+            ...existing.profile,
+            watchlist: [...existing.profile.watchlist, added],
+          },
+        };
+      });
     },
   });
 
   const [removeFromWatchlist, { loading: removing }] = useRemoveFromWatchlistMutation({
     variables: { symbol },
+    optimisticResponse: { removeFromWatchlist: true },
     update(cache) {
-      cache.evict({ fieldName: 'profile' });
-      cache.gc();
+      cache.updateQuery<ProfileQuery>({ query: ProfileDocument }, (existing) => {
+        if (!existing?.profile) return existing;
+        return {
+          ...existing,
+          profile: {
+            ...existing.profile,
+            watchlist: existing.profile.watchlist.filter((w) => w.symbol !== symbol),
+          },
+        };
+      });
     },
   });
 

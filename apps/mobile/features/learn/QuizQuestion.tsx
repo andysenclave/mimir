@@ -61,7 +61,7 @@ export function QuizQuestion({
       <View className="gap-2.5">
         {options.map((option, i) => (
           <Pressable
-            key={i}
+            key={option}
             disabled={answered}
             onPress={() => onSelect(i)}
             className={optionClasses(i, selectedIndex, feedback)}

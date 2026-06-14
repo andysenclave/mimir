@@ -5,9 +5,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { GraduationCap, Lock } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { BackHeader } from '@/components/layout/BackHeader';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { useCourseDetail } from '@/features/learn/hooks/useCourseDetail';
+import { CourseDetailSkeleton } from '@/features/learn/LearnSkeletons';
 import { LessonRow } from '@/features/learn/LessonRow';
 import { tokens } from '@/theme/tokens';
 
@@ -24,15 +26,7 @@ export default function CourseDetailScreen(): React.JSX.Element {
   if (loading && course === null) {
     return (
       <ScreenContainer>
-        <View className="px-4 pt-4 gap-3">
-          <View className="h-8 w-48 rounded-lg bg-bg-secondary" />
-          <View className="h-4 w-32 rounded-md bg-bg-secondary" />
-          <View className="mt-4 gap-2">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <View key={i} className="h-14 rounded-lg bg-bg-secondary" />
-            ))}
-          </View>
-        </View>
+        <CourseDetailSkeleton />
       </ScreenContainer>
     );
   }
@@ -48,6 +42,7 @@ export default function CourseDetailScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer>
+      <BackHeader />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}

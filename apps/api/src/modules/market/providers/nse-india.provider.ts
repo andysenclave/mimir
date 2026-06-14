@@ -2,9 +2,11 @@
 // MM-022. Wrapped by FallbackMarketDataProvider — never injected directly.
 //
 // Performance note: getMarketOverview uses a SINGLE getAllIndices() call (≈700ms)
-// to derive indices + sectors + top movers. Previously made 13 concurrent
+// to derive indices + sectors. Previously made 13 concurrent
 // getEquityStockIndices() calls which triggered NSE rate-limiting and caused
 // the market tab to hang or error.
+// Top movers are NOT derived here — index rows aren't tradeable. MarketService
+// computes them from the polled MarketSnapshot (real equities).
 //
 // getAllIndices() row shape: { index, indexSymbol, last, variation, percentChange, ... }
 // Note: field is `index` (not `indexName`) and `variation`/`percentChange` (not `change`/`percChange`).
@@ -158,21 +160,11 @@ export class NseIndiaProvider extends MarketDataProvider {
       })
       .filter((s): s is SectorPerformance => s !== null);
 
-    // ── Top movers — sort all rows by percentChange ──────────────────────────
-    const sorted = [...rows].sort((a, b) => (b.percentChange ?? 0) - (a.percentChange ?? 0));
-
-    const toStockQuote = (r: NseAllIndicesRow & { index: string }): StockQuote => ({
-      symbol: r.index,
-      name: r.index,
-      ltp: r.last ?? 0,
-      change: r.variation ?? 0,
-      changePct: r.percentChange ?? 0,
-      fetchedAt: now,
-    });
-
-    const topGainers = sorted.slice(0, 5).map(toStockQuote);
-    const topLosers  = sorted.slice(-5).reverse().map(toStockQuote);
-
-    return { indices, topGainers, topLosers, sectors, fetchedAt: now };
+    // ── Top movers ────────────────────────────────────────────────────────────
+    // Intentionally empty here. getAllIndices() only returns INDEX rows, whose
+    // "symbols" are index names (e.g. "NIFTY50 DIVIDEND POINTS") that aren't
+    // tradeable equities. MarketService computes top movers from the polled
+    // MarketSnapshot (real NSE stocks) instead — see getTopMoversFromSnapshots().
+    return { indices, topGainers: [], topLosers: [], sectors, fetchedAt: now };
   }
 }

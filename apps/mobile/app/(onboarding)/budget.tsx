@@ -105,6 +105,20 @@ export default function BudgetScreen(): React.JSX.Element {
           <Button onPress={() => void submit(selected)} loading={loading}>
             Continue
           </Button>
+
+          {/* MM-065 — mandatory consent: 18+ attestation + links to both legal docs (§19). */}
+          <Text className="mt-3 text-center text-[11px] leading-4 text-text-tertiary">
+            By continuing, you confirm you&apos;re 18 or older and agree to our{' '}
+            <Text className="text-accent underline" onPress={() => router.push('/(legal)/terms')}>
+              Terms of Service
+            </Text>{' '}
+            and{' '}
+            <Text className="text-accent underline" onPress={() => router.push('/(legal)/privacy')}>
+              Privacy Policy
+            </Text>
+            .
+          </Text>
+
           <View className="mt-3 items-center">
             <Text className="text-xs text-text-tertiary" onPress={() => void submit(POPULAR_TIER)}>
               Skip for now — defaults to {BUDGET_TIERS[POPULAR_TIER].label}

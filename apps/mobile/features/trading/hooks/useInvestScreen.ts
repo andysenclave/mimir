@@ -6,6 +6,7 @@
 import { isMarketOpen, uuidv4 } from '@mimir/shared';
 import { useState, useCallback, useRef } from 'react';
 
+import { useSoftPromptFlow } from '@/features/notifications/useSoftPromptFlow';
 import {
   useStockDetailQuery,
   useStockIntradayQuery,
@@ -15,7 +16,6 @@ import {
   type StockIntradayQuery,
   type PortfolioQuery,
 } from '@/graphql/generated';
-import { useSoftPromptFlow } from '@/features/notifications/useSoftPromptFlow';
 import { useAnalytics } from '@/lib/analytics/use-analytics';
 
 
@@ -51,8 +51,13 @@ export function useInvestScreen(
 ): UseInvestScreenResult {
   const isOpen = isMarketOpen(new Date());
 
+  // Guard: never fire the query without a symbol (e.g. a malformed deep link),
+  // which would 400 and wedge the screen.
+  const hasSymbol = symbol.length > 0;
+
   const { data, loading, error, client } = useStockDetailQuery({
     variables: { symbol },
+    skip: !hasSymbol,
     fetchPolicy: 'cache-and-network',
     pollInterval: isOpen ? 15_000 : 0,
   });
@@ -61,6 +66,7 @@ export function useInvestScreen(
   // Fetched once per screen mount; no polling (intraday data changes slowly).
   const { data: intradayData } = useStockIntradayQuery({
     variables: { symbol },
+    skip: !hasSymbol,
     fetchPolicy: 'cache-first',
   });
 

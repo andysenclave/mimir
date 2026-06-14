@@ -1,9 +1,11 @@
 // FlashList of holdings — rule: FlashList for any list > 20 items potential.
 // Section header included for labeling.
 
-import { View, Text } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { View, Text } from 'react-native';
+
 import { HoldingRow } from './HoldingRow';
+
 import type { PortfolioHolding } from './hooks/usePortfolio';
 
 interface HoldingsListProps {

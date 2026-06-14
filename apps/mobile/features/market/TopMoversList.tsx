@@ -3,14 +3,15 @@
 // No FlashList (list is ≤ 10 rows, below the 20-item threshold — CLAUDE.md §14).
 // All prices and % values in font-mono per CLAUDE.md §14.
 
-import { Pressable, Text, View } from 'react-native';
-import { TrendingDown, TrendingUp } from 'lucide-react-native';
-import { router } from 'expo-router';
-import clsx from 'clsx';
 import { formatINR } from '@mimir/shared';
+import clsx from 'clsx';
+import { router } from 'expo-router';
+import { TrendingDown, TrendingUp } from 'lucide-react-native';
+import { Pressable, Text, View } from 'react-native';
+
+import type { MarketStockQuote } from './hooks/useMarketOverview';
 
 import { tokens } from '@/theme/tokens';
-import type { MarketStockQuote } from './hooks/useMarketOverview';
 
 // ─── Row ──────────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ function MoverRow({ stock, isGainer }: MoverRowProps): React.JSX.Element {
   return (
     <Pressable
       className="flex-row items-center justify-between py-3 active:bg-bg-hover"
-      onPress={() => router.push(`/invest/${stock.symbol}` as never)}
+      onPress={() => router.push({ pathname: '/invest/[symbol]', params: { symbol: stock.symbol } })}
     >
       <View className="flex-1 pr-3">
         <Text className="font-sans text-sm font-medium text-text-primary" numberOfLines={1}>

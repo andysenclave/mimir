@@ -4,14 +4,19 @@
 
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import type { MarketOverviewData } from './hooks/useMarketOverview';
 
+import { useStockSearch } from './hooks/useStockSearch';
 import { IndexTickerBar } from './IndexTickerBar';
 import { MarketClosedPill } from './MarketClosedPill';
 import { PerformanceBenchmarkCard } from './PerformanceBenchmarkCard';
 import { SectorHeatmap } from './SectorHeatmap';
+import { StockSearchBar } from './StockSearchBar';
+import { StockSearchResults } from './StockSearchResults';
 import { TopMoversList } from './TopMoversList';
+
+import type { MarketOverviewData } from './hooks/useMarketOverview';
+
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
 
 interface MarketOverviewContentProps {
   overview: MarketOverviewData;
@@ -26,40 +31,49 @@ export function MarketOverviewContent({
   refreshing,
   onRefresh,
 }: MarketOverviewContentProps): React.JSX.Element {
+  const search = useStockSearch();
+
   return (
     <ScreenContainer>
       {/* Live ticker bar — pinned above the scroll area */}
       <IndexTickerBar indices={overview.indices} />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#6366F1"
-          />
-        }
-        contentContainerStyle={{ paddingVertical: 20, gap: 24 }}
-      >
-        {/* Market Closed pill — only visible off-hours */}
-        {!isOpen && (
-          <View className="px-4">
-            <MarketClosedPill />
-          </View>
-        )}
+      {/* Stock search — always available; results replace the overview while active */}
+      <StockSearchBar query={search.query} onChange={search.setQuery} onClear={search.clear} />
 
-        {/* Sector heatmap — 10 NSE sectors */}
-        <SectorHeatmap sectors={overview.sectors} />
+      {search.active ? (
+        <StockSearchResults
+          results={search.results}
+          loading={search.loading}
+          query={search.debouncedQuery}
+        />
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+          }
+          contentContainerStyle={{ paddingVertical: 20, gap: 24 }}
+        >
+          {/* Market Closed pill — only visible off-hours */}
+          {!isOpen && (
+            <View className="px-4">
+              <MarketClosedPill />
+            </View>
+          )}
 
-        {/* Top movers — top 5 gainers + top 5 losers */}
-        <TopMoversList gainers={overview.topGainers} losers={overview.topLosers} />
+          {/* Sector heatmap — 10 NSE sectors */}
+          <SectorHeatmap sectors={overview.sectors} />
 
-        {/* Performance vs benchmarks — MM-025 */}
-        <PerformanceBenchmarkCard />
+          {/* Top movers — top 5 gainers + top 5 losers */}
+          <TopMoversList gainers={overview.topGainers} losers={overview.topLosers} />
 
-        <View className="h-4" />
-      </ScrollView>
+          {/* Performance vs benchmarks — MM-025 */}
+          <PerformanceBenchmarkCard />
+
+          <View className="h-4" />
+        </ScrollView>
+      )}
     </ScreenContainer>
   );
 }

@@ -2,7 +2,7 @@
 // MM-022. NSE stocks use `.NS` suffix. Used when NSE India API is unavailable.
 
 import { Injectable } from '@nestjs/common';
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 
 import {
   MarketDataProvider,
@@ -51,15 +51,20 @@ const YAHOO_SECTOR_MAP: ReadonlyArray<{ yahoo: string; name: string; displayName
 
 @Injectable()
 export class YahooFinanceProvider extends MarketDataProvider {
+  // yahoo-finance2 v3 dropped the ready-made default singleton — the default
+  // export is now the client class and MUST be instantiated. Build one per
+  // provider instance. suppressNotices silences the library's startup banner.
+  private readonly yf = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
+
   async getQuote(symbol: string): Promise<StockQuote> {
     const yahooSymbol = this.toYahooSymbol(symbol);
-    const q = (await yahooFinance.quote(yahooSymbol)) as unknown as YahooQuote;
+    const q = (await this.yf.quote(yahooSymbol)) as unknown as YahooQuote;
     return this.mapQuote(symbol, q);
   }
 
   async getQuotes(symbols: string[]): Promise<StockQuote[]> {
     const yahooSymbols = symbols.map((s) => this.toYahooSymbol(s));
-    const raw = (await yahooFinance.quote(yahooSymbols)) as unknown as YahooQuote | YahooQuote[];
+    const raw = (await this.yf.quote(yahooSymbols)) as unknown as YahooQuote | YahooQuote[];
     const quotes = Array.isArray(raw) ? raw : [raw];
     return quotes.map((q, i) => this.mapQuote(symbols[i] ?? q.symbol, q));
   }
@@ -67,7 +72,7 @@ export class YahooFinanceProvider extends MarketDataProvider {
   async getIndexQuote(indexSymbol: string): Promise<IndexQuote> {
     const entry = YAHOO_INDEX_MAP.find((m) => m.nseKey === indexSymbol || m.yahoo === indexSymbol);
     const yahooSymbol = entry?.yahoo ?? indexSymbol;
-    const q = (await yahooFinance.quote(yahooSymbol)) as unknown as YahooQuote;
+    const q = (await this.yf.quote(yahooSymbol)) as unknown as YahooQuote;
     return {
       symbol: indexSymbol,
       name: entry?.name ?? q.shortName ?? indexSymbol,
@@ -105,11 +110,17 @@ export class YahooFinanceProvider extends MarketDataProvider {
     return symbol.includes('.') || symbol.startsWith('^') ? symbol : `${symbol}.NS`;
   }
 
-  // Yahoo Finance intraday via chart() endpoint (1m intervals, 1d range).
+  // Yahoo Finance intraday via chart() endpoint (1m intervals, today onward).
+  // v3 replaced the v2 `range` option with `period1`/`period2`.
   async getIntradayData(symbol: string): Promise<IntradayPoint[]> {
     try {
       const yahooSymbol = this.toYahooSymbol(symbol);
-      const result = (await yahooFinance.chart(yahooSymbol, { interval: '1m', range: '1d' })) as unknown as { quotes?: Array<{ date: unknown; close: unknown }> };
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const result = (await this.yf.chart(yahooSymbol, {
+        interval: '1m',
+        period1: startOfDay,
+      })) as unknown as { quotes?: Array<{ date: unknown; close: unknown }> };
       const quotes = result?.quotes ?? [];
       return quotes
         .filter((q) => q.date != null && q.close != null)

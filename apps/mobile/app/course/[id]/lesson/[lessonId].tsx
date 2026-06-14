@@ -5,12 +5,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useRef } from 'react';
 import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, Text, View } from 'react-native';
 
+import { BackHeader } from '@/components/layout/BackHeader';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { Button } from '@/components/ui/Button';
-import { useCourseDetailQuery } from '@/graphql/generated';
-import { LessonContent } from '@/features/learn/LessonContent';
 import { useLesson } from '@/features/learn/hooks/useLesson';
+import { LessonSkeleton } from '@/features/learn/LearnSkeletons';
+import { LessonContent } from '@/features/learn/LessonContent';
+import { useCourseDetailQuery } from '@/graphql/generated';
 
 export default function LessonViewScreen(): React.JSX.Element {
   const { id: courseId, lessonId } = useLocalSearchParams<{ id: string; lessonId: string }>();
@@ -36,14 +38,7 @@ export default function LessonViewScreen(): React.JSX.Element {
   if (loading && lesson === null) {
     return (
       <ScreenContainer>
-        <View className="px-4 pt-4 gap-3">
-          <View className="h-6 w-56 rounded-lg bg-bg-secondary" />
-          <View className="mt-4 gap-2">
-            {[0, 1, 2, 3].map((i) => (
-              <View key={i} className="h-4 rounded-md bg-bg-secondary" />
-            ))}
-          </View>
-        </View>
+        <LessonSkeleton />
       </ScreenContainer>
     );
   }
@@ -56,6 +51,7 @@ export default function LessonViewScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer edges={['top', 'left', 'right', 'bottom']}>
+      <BackHeader />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}

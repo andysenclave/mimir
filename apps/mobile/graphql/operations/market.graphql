@@ -45,3 +45,13 @@ subscription StockPriceUpdate($symbols: [String!]!) {
     fetchedAt
   }
 }
+
+# Stock search — symbol substring over the tradeable NSE universe.
+query SearchStocks($query: String!) {
+  searchStocks(query: $query) {
+    symbol
+    ltp
+    change
+    changePct
+  }
+}

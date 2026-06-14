@@ -1,7 +1,8 @@
 // MM-007 — auth + error links.
-// CLAUDE.md §13 — errorLink handles 401 (refresh + retry once), 5xx (toast +
-// Sentry), 4xx (form-level inline errors). Refresh wiring lands in MM-009 with
-// the AuthProvider; until then 401 just signs the user out via tokenStorage.clear().
+// CLAUDE.md §13 — errorLink handles 401 (5xx → toast + Sentry, 4xx → form-level
+// inline errors). On UNAUTHENTICATED it signals the AuthProvider to sign the user
+// out (via session-events), which flips isAuthenticated so the route guards
+// redirect to /login. Refresh-then-retry is the MM-009 follow-up.
 
 import {
   ApolloLink,
@@ -13,6 +14,7 @@ import {
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 
+import { emitSessionExpired } from '../auth/session-events';
 import { tokenStorage } from '../auth/storage';
 
 export const authLink = setContext(async (_op, prevContext) => {
@@ -33,9 +35,10 @@ export const errorLink: ApolloLink = onError(
         // CLAUDE.md §13 — extension code is the stable contract.
         const code = (err.extensions?.code as string | undefined) ?? 'UNKNOWN';
         if (code === 'UNAUTHENTICATED') {
-          // MM-009 will replace this with refresh-then-retry. Until then,
-          // surface the error to the AuthProvider via cache eviction.
-          void tokenStorage.clear();
+          // Session expired / token invalid. Tell the AuthProvider to sign out
+          // locally → isAuthenticated flips false → the (tabs) guard redirects
+          // to /login. (Idempotent: many in-flight queries may 401 at once.)
+          emitSessionExpired();
         }
 
         if (__DEV__) console.warn(`[apollo] ${code}: ${err.message} @ ${operation.operationName}`);

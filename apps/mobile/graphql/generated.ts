@@ -420,6 +420,8 @@ export type Query = {
   profile: UserProfileGql;
   /** Quiz for a course. Never exposes correct answers. */
   quiz: Quiz;
+  /** Search the tradeable NSE universe by symbol substring (max 20 results). */
+  searchStocks: Array<StockQuoteGql>;
   /** Last-known snapshot for a single NSE symbol. */
   stock: Maybe<StockQuoteGql>;
   /** Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed. */
@@ -447,6 +449,10 @@ export type QueryOrderHistoryArgs = {
 
 export type QueryQuizArgs = {
   courseId: Scalars['ID']['input'];
+};
+
+export type QuerySearchStocksArgs = {
+  query: Scalars['String']['input'];
 };
 
 export type QueryStockArgs = {
@@ -801,6 +807,21 @@ export type StockPriceUpdateSubscription = {
     changePct: number;
     fetchedAt: string;
   };
+};
+
+export type SearchStocksQueryVariables = Exact<{
+  query: Scalars['String']['input'];
+}>;
+
+export type SearchStocksQuery = {
+  __typename?: 'Query';
+  searchStocks: Array<{
+    __typename?: 'StockQuoteGql';
+    symbol: string;
+    ltp: number;
+    change: number | null;
+    changePct: number | null;
+  }>;
 };
 
 export type MeQueryVariables = Exact<{ [key: string]: never }>;
@@ -1946,6 +1967,80 @@ export type StockPriceUpdateSubscriptionHookResult = ReturnType<
 >;
 export type StockPriceUpdateSubscriptionResult =
   Apollo.SubscriptionResult<StockPriceUpdateSubscription>;
+export const SearchStocksDocument = gql`
+  query SearchStocks($query: String!) {
+    searchStocks(query: $query) {
+      symbol
+      ltp
+      change
+      changePct
+    }
+  }
+`;
+
+/**
+ * __useSearchStocksQuery__
+ *
+ * To run a query within a React component, call `useSearchStocksQuery` and pass it any options that fit your needs.
+ * When your component renders, `useSearchStocksQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useSearchStocksQuery({
+ *   variables: {
+ *      query: // value for 'query'
+ *   },
+ * });
+ */
+export function useSearchStocksQuery(
+  baseOptions: Apollo.QueryHookOptions<SearchStocksQuery, SearchStocksQueryVariables> &
+    ({ variables: SearchStocksQueryVariables; skip?: boolean } | { skip: boolean }),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<SearchStocksQuery, SearchStocksQueryVariables>(
+    SearchStocksDocument,
+    options,
+  );
+}
+export function useSearchStocksLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<SearchStocksQuery, SearchStocksQueryVariables>,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<SearchStocksQuery, SearchStocksQueryVariables>(
+    SearchStocksDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useSearchStocksSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<SearchStocksQuery, SearchStocksQueryVariables>,
+): Apollo.UseSuspenseQueryResult<SearchStocksQuery, SearchStocksQueryVariables>;
+export function useSearchStocksSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<SearchStocksQuery, SearchStocksQueryVariables>,
+): Apollo.UseSuspenseQueryResult<SearchStocksQuery | undefined, SearchStocksQueryVariables>;
+export function useSearchStocksSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<SearchStocksQuery, SearchStocksQueryVariables>,
+) {
+  const options =
+    baseOptions === Apollo.skipToken ? baseOptions : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<SearchStocksQuery, SearchStocksQueryVariables>(
+    SearchStocksDocument,
+    options,
+  );
+}
+export type SearchStocksQueryHookResult = ReturnType<typeof useSearchStocksQuery>;
+export type SearchStocksLazyQueryHookResult = ReturnType<typeof useSearchStocksLazyQuery>;
+export type SearchStocksSuspenseQueryHookResult = ReturnType<typeof useSearchStocksSuspenseQuery>;
+export type SearchStocksQueryResult = Apollo.QueryResult<
+  SearchStocksQuery,
+  SearchStocksQueryVariables
+>;
 export const MeDocument = gql`
   query Me {
     me {

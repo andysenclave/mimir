@@ -35,6 +35,13 @@ export class MarketResolver {
     return this.marketService.getStockQuote(symbol);
   }
 
+  @Query(() => [StockQuoteGql], {
+    description: 'Search the tradeable NSE universe by symbol substring (max 20 results).',
+  })
+  searchStocks(@Args('query') query: string): Promise<StockQuoteGql[]> {
+    return this.marketService.searchStocks(query);
+  }
+
   @Query(() => [IntradayPointGql], { description: 'Intraday price series for a symbol (1-day, ~5-min intervals). Returns [] when market is closed.' })
   stockIntraday(@Args('symbol') symbol: string): Promise<IntradayPointGql[]> {
     return this.marketService.getStockIntraday(symbol);

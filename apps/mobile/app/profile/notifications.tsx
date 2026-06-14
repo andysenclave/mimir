@@ -10,6 +10,9 @@
 // Auto-saves: changes call updateNotificationPreferences immediately (no Save button).
 // Prompt 30 (mobile-screen-scaffold): < 150 lines of screen code — logic in hooks.
 
+import * as Notifications from 'expo-notifications';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, Lock } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -20,14 +23,13 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Lock } from 'lucide-react-native';
-import * as Notifications from 'expo-notifications';
+
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   useNotificationPreferencesQuery,
   useUpdateNotificationPreferencesMutation,
 } from '@/graphql/generated';
-import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { tokens } from '@/theme/tokens';
 
 export default function NotificationSettingsScreen(): React.JSX.Element {
@@ -94,8 +96,19 @@ export default function NotificationSettingsScreen(): React.JSX.Element {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         {loading && !prefs ? (
-          <View className="flex-1 items-center justify-center py-12">
-            <Text className="text-text-tertiary text-sm">Loading…</Text>
+          <View className="px-4 pt-4 gap-3">
+            <Skeleton className="w-40 h-3 rounded" />
+            <View className="bg-surface-elevated rounded-2xl overflow-hidden">
+              {[0, 1, 2, 3].map((i) => (
+                <View
+                  key={i}
+                  className="flex-row items-center justify-between px-4 py-4 border-b border-border-subtle"
+                >
+                  <Skeleton className="w-32 h-4 rounded" />
+                  <Skeleton className="w-10 h-6 rounded-full" />
+                </View>
+              ))}
+            </View>
           </View>
         ) : (
           <>

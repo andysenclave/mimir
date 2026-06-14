@@ -3,7 +3,7 @@
 // MM-021: pollAndPublish + snapshot upsert.
 // MM-023: publishTick now uses RedisPubSub (PUB_SUB token); getMarketOverview with TTL cache.
 
-import { isMarketOpen } from '@mimir/shared';
+import { isMarketOpen, TOP_100_NSE_SYMBOLS } from '@mimir/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 
@@ -95,6 +95,43 @@ export class MarketService {
     return { published, skipped, failed };
   }
 
+  /**
+   * Search the tradeable NSE universe (TOP_100_NSE_SYMBOLS) by symbol substring.
+   * Restricting to that curated set guarantees every result opens its invest/
+   * order screen. Results are enriched with last-known prices from MarketSnapshot
+   * where available (symbols without a snapshot still return so they're findable —
+   * the invest screen fetches fresh data on open). Capped at 20.
+   */
+  async searchStocks(query: string): Promise<StockQuoteGql[]> {
+    const q = query.trim().toUpperCase();
+    if (q.length === 0) return [];
+
+    const matches = TOP_100_NSE_SYMBOLS.filter((s) => s.includes(q)).slice(0, 20);
+    if (matches.length === 0) return [];
+
+    const snapshots = await this.prisma.marketSnapshot.findMany({
+      where: { symbol: { in: matches } },
+    });
+    const snapBySymbol = new Map(snapshots.map((r) => [r.symbol, r]));
+
+    return matches.map((symbol) => {
+      const row = snapBySymbol.get(symbol);
+      if (!row) return { symbol, ltp: 0, fetchedAt: new Date() };
+      return {
+        symbol: row.symbol,
+        ltp: row.ltp.toNumber(),
+        change: row.change?.toNumber(),
+        changePct: row.changePct?.toNumber(),
+        open: row.open?.toNumber(),
+        high: row.high?.toNumber(),
+        low: row.low?.toNumber(),
+        close: row.close?.toNumber(),
+        volume: row.volume !== null && row.volume !== undefined ? Number(row.volume) : undefined,
+        fetchedAt: row.fetchedAt,
+      };
+    });
+  }
+
   /** Retrieve the last-known snapshot for a symbol, mapped to GraphQL entity. */
   async getStockQuote(symbol: string): Promise<StockQuoteGql | null> {
     const row = await this.prisma.marketSnapshot.findUnique({ where: { symbol } });
@@ -129,18 +166,72 @@ export class MarketService {
   /**
    * Returns market overview (indices + sectors + top movers).
    * Cached in-process: 30s during market hours, 5min off-hours.
+   *
+   * Indices + sectors come from the provider's single getAllIndices() call.
+   * Top movers come from MarketSnapshot (real, tradeable NSE equities) — the
+   * provider only has index rows, whose "symbols" are index names that can't be
+   * traded. Sourcing movers from the polled snapshot guarantees every mover row
+   * opens its invest/order screen (getStockQuote + order validation both resolve).
    */
   async getMarketOverview(now: Date = new Date()): Promise<MarketOverview> {
     const ttlMs = isMarketOpen(now) ? 30_000 : 300_000;
     if (this.overviewCache && this.overviewCache.expiresAt > now.getTime()) {
       return this.overviewCache.data;
     }
-    const data = await this.provider.getMarketOverview();
+
+    const [base, movers] = await Promise.all([
+      this.provider.getMarketOverview(),
+      this.getTopMoversFromSnapshots(),
+    ]);
+
+    const data: MarketOverview = {
+      ...base,
+      topGainers: movers.topGainers,
+      topLosers: movers.topLosers,
+    };
     this.overviewCache = { data, expiresAt: now.getTime() + ttlMs };
     return data;
   }
 
   // ─── Private ──────────────────────────────────────────────────────────────
+
+  /**
+   * Top 5 gainers + top 5 losers from the polled MarketSnapshot, restricted to
+   * the curated tradeable universe (TOP_100_NSE_SYMBOLS). Every returned symbol
+   * is guaranteed quotable and order-placeable. Zero extra API calls — reads the
+   * snapshot the poller already maintains (holds last close-of-day off-hours).
+   */
+  private async getTopMoversFromSnapshots(): Promise<{
+    topGainers: StockQuote[];
+    topLosers: StockQuote[];
+  }> {
+    const rows = await this.prisma.marketSnapshot.findMany({
+      where: { symbol: { in: [...TOP_100_NSE_SYMBOLS] }, changePct: { not: null } },
+    });
+
+    const quotes: StockQuote[] = rows.map((r) => ({
+      symbol: r.symbol,
+      ltp: r.ltp.toNumber(),
+      change: r.change?.toNumber() ?? 0,
+      changePct: r.changePct?.toNumber() ?? 0,
+      fetchedAt: r.fetchedAt,
+    }));
+
+    const byPctDesc = (a: StockQuote, b: StockQuote): number =>
+      (b.changePct ?? 0) - (a.changePct ?? 0);
+
+    const topGainers = quotes
+      .filter((q) => (q.changePct ?? 0) > 0)
+      .sort(byPctDesc)
+      .slice(0, 5);
+
+    const topLosers = quotes
+      .filter((q) => (q.changePct ?? 0) < 0)
+      .sort((a, b) => -byPctDesc(a, b))
+      .slice(0, 5);
+
+    return { topGainers, topLosers };
+  }
 
   private async publishTick(_symbol: string, quote: StockQuote): Promise<void> {
     await this.pubSub.publish(STOCK_TICK_CHANNEL, {

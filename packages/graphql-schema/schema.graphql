@@ -441,6 +441,11 @@ type Query {
   """Quiz for a course. Never exposes correct answers."""
   quiz(courseId: ID!): Quiz!
 
+  """
+  Search the tradeable NSE universe by symbol substring (max 20 results).
+  """
+  searchStocks(query: String!): [StockQuoteGql!]!
+
   """Last-known snapshot for a single NSE symbol."""
   stock(symbol: String!): StockQuoteGql
 
