@@ -1,7 +1,8 @@
 // Single row in the trade history list — symbol, BUY/SELL pill, qty, price, total, timestamp.
 
-import { View, Text } from 'react-native';
 import { formatINR } from '@mimir/shared';
+import { View, Text } from 'react-native';
+
 import type { OrderHistoryQuery } from '@/graphql/generated';
 
 type TradeItem = OrderHistoryQuery['orderHistory'][number];
@@ -17,7 +18,11 @@ export function TradeHistoryRow({ trade }: TradeHistoryRowProps): React.JSX.Elem
 
   const date = new Date(trade.executedAt);
   const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-  const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const timeStr = date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
 
   return (
     <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-border-subtle">
@@ -29,7 +34,9 @@ export function TradeHistoryRow({ trade }: TradeHistoryRowProps): React.JSX.Elem
             <Text className={`text-xs font-mono font-semibold ${pillText}`}>{trade.type}</Text>
           </View>
         </View>
-        <Text className="text-text-tertiary text-xs">{dateStr} · {timeStr}</Text>
+        <Text className="text-text-tertiary text-xs">
+          {dateStr} · {timeStr}
+        </Text>
         <Text className="text-text-secondary text-xs font-mono">
           {trade.quantity} shares @ {formatINR(trade.priceAtExecution)}
         </Text>
@@ -41,8 +48,11 @@ export function TradeHistoryRow({ trade }: TradeHistoryRowProps): React.JSX.Elem
           {formatINR(trade.orderValue)}
         </Text>
         {trade.realizedPnl != null && (
-          <Text className={`text-xs font-mono ${trade.realizedPnl >= 0 ? 'text-gain' : 'text-loss'}`}>
-            {trade.realizedPnl >= 0 ? '+' : ''}{formatINR(trade.realizedPnl)}
+          <Text
+            className={`text-xs font-mono ${trade.realizedPnl >= 0 ? 'text-gain' : 'text-loss'}`}
+          >
+            {trade.realizedPnl >= 0 ? '+' : ''}
+            {formatINR(trade.realizedPnl)}
           </Text>
         )}
       </View>

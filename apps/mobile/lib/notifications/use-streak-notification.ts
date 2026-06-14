@@ -12,9 +12,10 @@
 //
 // Deep-link on tap: data.route = '/(tabs)/portfolio' — handled by useNotificationsBootstrap.
 
-import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
+import { useEffect, useRef } from 'react';
+
 import { todayIst, secondsUntilNextStreak } from './streak-schedule';
 
 const SECURE_STORE_KEY = 'streak_last_opened_date';

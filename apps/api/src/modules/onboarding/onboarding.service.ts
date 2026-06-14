@@ -87,6 +87,7 @@ export class OnboardingService {
           displayName: result.updatedUser.displayName,
         }),
         onboardingDone: result.updatedUser.onboardingDone,
+        streakCount: result.updatedUser.streakCount,
       },
       budget: {
         id: result.budget.id,

@@ -4,8 +4,8 @@
 // Deferral key: 'push_prompt_deferred_until' in SecureStore (ISO date string).
 
 import * as Notifications from 'expo-notifications';
-import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import { useCallback, useState } from 'react';
 
 import { useAnalytics } from '@/lib/analytics/use-analytics';

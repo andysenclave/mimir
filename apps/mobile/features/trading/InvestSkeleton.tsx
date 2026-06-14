@@ -1,8 +1,9 @@
 // Loading skeleton for the Invest screen (prompt 10 — loading states).
 
 import { View } from 'react-native';
-import { Skeleton } from '@/components/ui/Skeleton';
+
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export function InvestSkeleton(): React.JSX.Element {
   return (

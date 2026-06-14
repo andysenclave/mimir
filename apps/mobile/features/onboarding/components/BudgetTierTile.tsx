@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import { Check } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface BudgetTierTileProps {
   label: string;
@@ -22,6 +22,7 @@ export function BudgetTierTile({
   popular,
   custom,
 }: BudgetTierTileProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <Pressable
       onPress={onPress}

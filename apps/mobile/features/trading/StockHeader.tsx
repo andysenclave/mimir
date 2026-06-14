@@ -1,10 +1,12 @@
 // Stock header bar: back button, symbol, name, watchlist button (MM-037).
 
-import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import { tokens } from '@/theme/tokens';
+import { Pressable, Text, View } from 'react-native';
+
 import { WatchlistButton } from './WatchlistButton';
+
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface StockHeaderProps {
   symbol: string;
@@ -12,6 +14,7 @@ interface StockHeaderProps {
 }
 
 export function StockHeader({ symbol, name }: StockHeaderProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border-subtle">
       <Pressable

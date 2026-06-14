@@ -8,7 +8,7 @@ import { Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface PlaceholderScreenProps {
   title: string;
@@ -23,6 +23,7 @@ export function PlaceholderScreen({
   icon: Icon,
   storyRef,
 }: PlaceholderScreenProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <ScreenContainer>
       <View className="flex-1 items-center justify-center px-6">

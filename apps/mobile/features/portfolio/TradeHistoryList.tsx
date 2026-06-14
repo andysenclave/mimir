@@ -93,7 +93,8 @@ export function TradeHistoryList(): React.JSX.Element {
     <>
       <View className="mt-4">
         <Text className="text-text-secondary text-xs font-medium uppercase tracking-wide px-4 mb-2">
-          Trade History ({trades.length}{hasMore ? '+' : ''})
+          Trade History ({trades.length}
+          {hasMore ? '+' : ''})
         </Text>
         <View className="bg-surface-elevated rounded-2xl mx-4 overflow-hidden">
           <FlashList
@@ -127,15 +128,9 @@ export function TradeHistoryList(): React.JSX.Element {
         animationType="slide"
         onRequestClose={() => setSelectedTrade(null)}
       >
-        <Pressable
-          className="flex-1 bg-black/40"
-          onPress={() => setSelectedTrade(null)}
-        />
+        <Pressable className="flex-1 bg-black/40" onPress={() => setSelectedTrade(null)} />
         {selectedTrade !== null && (
-          <TradeDetailModal
-            trade={selectedTrade}
-            onClose={() => setSelectedTrade(null)}
-          />
+          <TradeDetailModal trade={selectedTrade} onClose={() => setSelectedTrade(null)} />
         )}
       </Modal>
     </>

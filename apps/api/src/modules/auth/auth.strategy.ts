@@ -4,10 +4,25 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy, type StrategyOptionsWithoutRequest } from 'passport-jwt';
+import { Strategy, type StrategyOptionsWithoutRequest } from 'passport-jwt';
 
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import type { Env } from '../../config/env.schema';
+
+// Defensive Bearer-token extractor. passport-jwt's built-in
+// ExtractJwt.fromAuthHeaderAsBearerToken() reads `request.headers.authorization`
+// and throws an unhandled TypeError when a guarded GraphQL op reaches the strategy
+// with no `headers` on the request (certain non-HTTP execution contexts). Returning
+// null instead yields a clean auth rejection — no crash, no ExceptionsHandler spam.
+const bearerTokenExtractor: StrategyOptionsWithoutRequest['jwtFromRequest'] = (req) => {
+  const headers = (req as { headers?: Record<string, string | undefined> } | undefined)?.headers;
+  const header = headers?.authorization;
+  if (typeof header === 'string' && header.startsWith('Bearer ')) {
+    const token = header.slice('Bearer '.length).trim();
+    return token.length > 0 ? token : null;
+  }
+  return null;
+};
 
 type JwtPayload = {
   sub: string;
@@ -26,14 +41,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     const options: StrategyOptionsWithoutRequest = publicKey
       ? {
-          jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+          jwtFromRequest: bearerTokenExtractor,
           secretOrKey: publicKey,
           algorithms: ['RS256'],
           issuer,
           ignoreExpiration: false,
         }
       : {
-          jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+          jwtFromRequest: bearerTokenExtractor,
           secretOrKey: secret ?? '',
           algorithms: ['HS256'],
           issuer,

@@ -7,7 +7,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface ConfirmSheetProps {
   title: string;
@@ -24,6 +24,7 @@ export function ConfirmSheet({
   onConfirm,
   onCancel,
 }: ConfirmSheetProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const sheetRef = useRef<BottomSheet>(null);
   const [busy, setBusy] = useState(false);
 

@@ -92,6 +92,13 @@ export class FallbackMarketDataProvider extends MarketDataProvider {
     );
   }
 
+  async getGlobalIndices(): Promise<IndexQuote[]> {
+    // Global indices live only on Yahoo (NSE provider has no global data), so
+    // skip the circuit breaker and call the fallback directly. Never throw —
+    // an empty list just hides the Global Markets section.
+    return this.fallback.getGlobalIndices().catch(() => []);
+  }
+
   async getIntradayData(symbol: string): Promise<IntradayPoint[]> {
     return this.withFallback(
       () => this.primary.getIntradayData(symbol),
@@ -114,7 +121,7 @@ export class FallbackMarketDataProvider extends MarketDataProvider {
       );
     } catch (err) {
       this.logger.error('Both market data providers failed for getMarketOverview — returning empty overview', { err: String(err) });
-      return { indices: [], topGainers: [], topLosers: [], sectors: [], fetchedAt: new Date() };
+      return { indices: [], globalIndices: [], topGainers: [], topLosers: [], sectors: [], fetchedAt: new Date() };
     }
   }
 

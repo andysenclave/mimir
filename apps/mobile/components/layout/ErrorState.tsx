@@ -19,8 +19,7 @@ import type { LucideIcon } from 'lucide-react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { Button } from '@/components/ui/Button';
-import { tokens } from '@/theme/tokens';
-
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export type ErrorVariant =
   | 'network'
@@ -102,21 +101,21 @@ export function ErrorState({
   retryLabel = 'Retry',
   inline = false,
 }: ErrorStateProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const preset = PRESETS[variant];
   const Icon = preset.icon;
 
   // Legacy compatibility: a caller passing only `message` (no variant, no heading)
   // gets just that message — never a generic heading layered on top of it.
-  const isLegacyMessageOnly = message !== undefined && heading === undefined && variant === 'generic';
+  const isLegacyMessageOnly =
+    message !== undefined && heading === undefined && variant === 'generic';
   const resolvedHeading = heading ?? (isLegacyMessageOnly ? undefined : preset.heading);
   const resolvedMessage = message ?? preset.message;
 
   const body = (
     <View
       className={
-        inline
-          ? 'items-center gap-3 px-6 py-8'
-          : 'flex-1 items-center justify-center gap-4 px-8'
+        inline ? 'items-center gap-3 px-6 py-8' : 'flex-1 items-center justify-center gap-4 px-8'
       }
     >
       <View className="h-16 w-16 items-center justify-center rounded-2xl bg-bg-secondary">

@@ -3,12 +3,15 @@
 
 import { useState } from 'react';
 import { ScrollView, RefreshControl, View, Text, Pressable } from 'react-native';
-import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { PortfolioSummaryCard } from './PortfolioSummaryCard';
-import { EquityCurveChart } from './EquityCurveChart';
+
+import { BudgetBanner } from './BudgetBanner';
 import { HoldingsList } from './HoldingsList';
+import { PortfolioSummaryCard } from './PortfolioSummaryCard';
 import { TradeHistoryList } from './TradeHistoryList';
+
 import type { PortfolioData } from './hooks/usePortfolio';
+
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
 
 type ActiveTab = 'holdings' | 'history';
 
@@ -30,12 +33,13 @@ export function PortfolioContent({
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 32 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <PortfolioSummaryCard portfolio={portfolio} />
-        <EquityCurveChart points={portfolio.equityCurve} />
+        <BudgetBanner
+          amount={portfolio.budget.amount}
+          cashRemaining={portfolio.budget.cashRemaining}
+        />
 
         {/* Holdings | History tab toggle */}
         <View className="flex-row mx-4 mt-4 bg-surface-elevated rounded-xl p-1">
@@ -43,7 +47,9 @@ export function PortfolioContent({
             onPress={() => setActiveTab('holdings')}
             className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'holdings' ? 'bg-accent' : ''}`}
           >
-            <Text className={`text-sm font-semibold ${activeTab === 'holdings' ? 'text-white' : 'text-text-secondary'}`}>
+            <Text
+              className={`text-sm font-semibold ${activeTab === 'holdings' ? 'text-white' : 'text-text-secondary'}`}
+            >
               Holdings
             </Text>
           </Pressable>
@@ -51,7 +57,9 @@ export function PortfolioContent({
             onPress={() => setActiveTab('history')}
             className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'history' ? 'bg-accent' : ''}`}
           >
-            <Text className={`text-sm font-semibold ${activeTab === 'history' ? 'text-white' : 'text-text-secondary'}`}>
+            <Text
+              className={`text-sm font-semibold ${activeTab === 'history' ? 'text-white' : 'text-text-secondary'}`}
+            >
               History
             </Text>
           </Pressable>

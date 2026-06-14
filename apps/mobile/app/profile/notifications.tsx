@@ -14,15 +14,7 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Lock } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  Switch,
-  ScrollView,
-  Alert,
-  TextInput,
-} from 'react-native';
+import { View, Text, Pressable, Switch, ScrollView, Alert, TextInput } from 'react-native';
 
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -30,10 +22,11 @@ import {
   useNotificationPreferencesQuery,
   useUpdateNotificationPreferencesMutation,
 } from '@/graphql/generated';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export default function NotificationSettingsScreen(): React.JSX.Element {
   const router = useRouter();
+  const tokens = useThemeTokens();
 
   const { data, loading } = useNotificationPreferencesQuery({
     fetchPolicy: 'cache-and-network',
@@ -119,31 +112,46 @@ export default function NotificationSettingsScreen(): React.JSX.Element {
                 label="Streak reminder"
                 description="Daily nudge if you haven't opened the app"
                 value={streakEnabled}
-                onChange={(v) => { setStreakEnabled(v); save({ streakEnabled: v }); }}
+                onChange={(v) => {
+                  setStreakEnabled(v);
+                  save({ streakEnabled: v });
+                }}
               />
               <CategoryRow
                 label="Budget alerts"
                 description="When your monthly budget is running low"
                 value={budgetEnabled}
-                onChange={(v) => { setBudgetEnabled(v); save({ budgetEnabled: v }); }}
+                onChange={(v) => {
+                  setBudgetEnabled(v);
+                  save({ budgetEnabled: v });
+                }}
               />
               <CategoryRow
                 label="Price alerts"
                 description="When a watchlisted stock moves ±3%"
                 value={priceAlertsEnabled}
-                onChange={(v) => { setPriceAlertsEnabled(v); save({ priceAlertsEnabled: v }); }}
+                onChange={(v) => {
+                  setPriceAlertsEnabled(v);
+                  save({ priceAlertsEnabled: v });
+                }}
               />
               <CategoryRow
                 label="Portfolio events"
                 description="When your portfolio moves ±5% in a day"
                 value={portfolioEvtEnabled}
-                onChange={(v) => { setPortfolioEvtEnabled(v); save({ portfolioEvtEnabled: v }); }}
+                onChange={(v) => {
+                  setPortfolioEvtEnabled(v);
+                  save({ portfolioEvtEnabled: v });
+                }}
               />
               <CategoryRow
                 label="Learning"
                 description="Course milestones and quiz results"
                 value={educationalEnabled}
-                onChange={(v) => { setEducationalEnabled(v); save({ educationalEnabled: v }); }}
+                onChange={(v) => {
+                  setEducationalEnabled(v);
+                  save({ educationalEnabled: v });
+                }}
               />
               {/* TRANSACTIONAL — always on, read-only */}
               <View className="flex-row items-start justify-between px-4 py-3.5 opacity-50">
@@ -166,18 +174,23 @@ export default function NotificationSettingsScreen(): React.JSX.Element {
               <TimeInputRow
                 label="Start"
                 value={quietHoursStart}
-                onChange={(v) => { setQuietHoursStart(v); }}
+                onChange={(v) => {
+                  setQuietHoursStart(v);
+                }}
                 onBlur={(v) => save({ quietHoursStart: v })}
               />
               <TimeInputRow
                 label="End"
                 value={quietHoursEnd}
-                onChange={(v) => { setQuietHoursEnd(v); }}
+                onChange={(v) => {
+                  setQuietHoursEnd(v);
+                }}
                 onBlur={(v) => save({ quietHoursEnd: v })}
               />
               <View className="px-4 py-2.5">
                 <Text className="text-xs text-text-tertiary">
-                  No non-transactional pushes between these times. Order fill notifications always deliver.
+                  No non-transactional pushes between these times. Order fill notifications always
+                  deliver.
                 </Text>
               </View>
             </View>
@@ -190,10 +203,15 @@ export default function NotificationSettingsScreen(): React.JSX.Element {
                 {([1, 2, 3] as const).map((n) => (
                   <Pressable
                     key={n}
-                    onPress={() => { setDailyCap(n); save({ dailyCap: n }); }}
-                    className={`flex-1 py-2 rounded-xl items-center ${dailyCap === n ? 'bg-primary' : 'bg-surface-base'}`}
+                    onPress={() => {
+                      setDailyCap(n);
+                      save({ dailyCap: n });
+                    }}
+                    className={`flex-1 py-2 rounded-xl items-center ${dailyCap === n ? 'bg-accent' : 'bg-bg-tertiary'}`}
                   >
-                    <Text className={`text-sm font-semibold ${dailyCap === n ? 'text-white' : 'text-text-secondary'}`}>
+                    <Text
+                      className={`text-sm font-semibold ${dailyCap === n ? 'text-white' : 'text-text-secondary'}`}
+                    >
                       {n}
                     </Text>
                   </Pressable>
@@ -207,7 +225,9 @@ export default function NotificationSettingsScreen(): React.JSX.Element {
                 onPress={handleSendTest}
                 className="bg-surface-elevated border border-border-subtle rounded-2xl py-3.5 items-center"
               >
-                <Text className="text-sm font-medium text-text-primary">Send test notification</Text>
+                <Text className="text-sm font-medium text-text-primary">
+                  Send test notification
+                </Text>
               </Pressable>
             </View>
           </>

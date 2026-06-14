@@ -18,13 +18,14 @@ import {
   useProfileQuery,
   type ProfileQuery,
 } from '@/graphql/generated';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface WatchlistButtonProps {
   symbol: string;
 }
 
 export function WatchlistButton({ symbol }: WatchlistButtonProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const { data } = useProfileQuery({ fetchPolicy: 'cache-first' });
   const isWatching = data?.profile.watchlist.some((w) => w.symbol === symbol) ?? false;
 

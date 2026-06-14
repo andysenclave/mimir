@@ -4,9 +4,10 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export function SettingsHeader({ title }: { title: string }): React.JSX.Element {
+  const tokens = useThemeTokens();
   const router = useRouter();
   return (
     <View className="flex-row items-center gap-3 px-4 py-4 border-b border-border-subtle">

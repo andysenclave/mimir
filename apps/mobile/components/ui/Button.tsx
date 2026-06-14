@@ -11,7 +11,7 @@ import { ActivityIndicator, Pressable, Text } from 'react-native';
 
 import type { ReactNode } from 'react';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'gain' | 'loss';
 type Size = 'sm' | 'md';
@@ -42,14 +42,6 @@ const TEXT: Record<Variant, string> = {
   loss: 'text-white',
 };
 
-const SPINNER_COLOR: Record<Variant, string> = {
-  primary: tokens.text.primary,
-  secondary: tokens.text.primary,
-  ghost: tokens.accent,
-  gain: tokens.bg.primary,
-  loss: tokens.text.primary,
-};
-
 export function Button({
   children,
   onPress,
@@ -59,6 +51,14 @@ export function Button({
   disabled = false,
   fullWidth = true,
 }: ButtonProps): React.JSX.Element {
+  const tokens = useThemeTokens();
+  const SPINNER_COLOR: Record<Variant, string> = {
+    primary: tokens.text.primary,
+    secondary: tokens.text.primary,
+    ghost: tokens.accent,
+    gain: tokens.bg.primary,
+    loss: tokens.text.primary,
+  };
   const isInteractive = !loading && !disabled;
   return (
     <Pressable

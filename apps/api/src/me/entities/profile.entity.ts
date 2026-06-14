@@ -68,6 +68,10 @@ export class UserProfileGql {
   @Field(() => Float)
   memberSince!: number;
 
+  /** Consecutive-day app-open streak (MM-077). */
+  @Field()
+  streakCount!: number;
+
   @Field(() => ProfileStatsGql)
   stats!: ProfileStatsGql;
 

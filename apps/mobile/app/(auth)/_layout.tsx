@@ -6,10 +6,11 @@ import { Redirect, Stack } from 'expo-router';
 import { View } from 'react-native';
 
 import { useAuth } from '@/lib/auth/AuthProvider';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export default function AuthLayout(): React.JSX.Element {
   const { isAuthenticated, isLoading } = useAuth();
+  const tokens = useThemeTokens();
 
   if (isLoading) return <View className="flex-1 bg-bg-primary" />;
   if (isAuthenticated) return <Redirect href="/" />;

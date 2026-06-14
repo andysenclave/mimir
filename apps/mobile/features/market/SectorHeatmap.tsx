@@ -4,8 +4,8 @@
 //   negative → loss-tinted border + loss text
 // All % values in font-mono per CLAUDE.md §14.
 
-import { Text, View } from 'react-native';
 import clsx from 'clsx';
+import { Text, View } from 'react-native';
 
 import type { MarketSectorPerf } from './hooks/useMarketOverview';
 
@@ -30,12 +30,11 @@ function SectorTile({ sector }: SectorTileProps): React.JSX.Element {
     <View
       className={clsx(
         'flex-1 basis-[46%] rounded-lg border px-3 py-3',
-        'bg-bg-secondary',
         neutral
-          ? 'border-border-subtle'
+          ? 'border-border-subtle bg-bg-secondary'
           : positive
-          ? 'border-gain'
-          : 'border-loss',
+            ? 'border-gain/40 bg-gain/10'
+            : 'border-loss/40 bg-loss/10',
       )}
     >
       <Text className="font-sans text-xs text-text-secondary" numberOfLines={1}>
@@ -44,11 +43,7 @@ function SectorTile({ sector }: SectorTileProps): React.JSX.Element {
       <Text
         className={clsx(
           'mt-1 font-mono text-sm font-medium',
-          neutral
-            ? 'text-text-secondary'
-            : positive
-            ? 'text-gain'
-            : 'text-loss',
+          neutral ? 'text-text-secondary' : positive ? 'text-gain' : 'text-loss',
         )}
       >
         {formatChangePct(sector.changePct)}
@@ -58,6 +53,9 @@ function SectorTile({ sector }: SectorTileProps): React.JSX.Element {
 }
 
 export function SectorHeatmap({ sectors }: SectorHeatmapProps): React.JSX.Element {
+  const upCount = sectors.filter((s) => s.changePct >= 0.1).length;
+  const downCount = sectors.filter((s) => s.changePct <= -0.1).length;
+
   return (
     <View className="px-4">
       <Text className="mb-3 font-sans text-sm font-semibold text-text-primary">Sectors</Text>
@@ -65,6 +63,10 @@ export function SectorHeatmap({ sectors }: SectorHeatmapProps): React.JSX.Elemen
         {sectors.map((sector) => (
           <SectorTile key={sector.name} sector={sector} />
         ))}
+      </View>
+      <View className="mt-2.5 flex-row items-center gap-3">
+        <Text className="text-gain font-mono text-xs">{upCount} up</Text>
+        <Text className="text-loss font-mono text-xs">{downCount} down</Text>
       </View>
     </View>
   );

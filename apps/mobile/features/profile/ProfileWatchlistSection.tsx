@@ -3,8 +3,8 @@
 // Live LTP via stockPrice subscription in useProfile.
 
 import { formatINR } from '@mimir/shared';
-import { useRouter } from 'expo-router';
-import { Eye } from 'lucide-react-native';
+import { router, useRouter } from 'expo-router';
+import { Eye, Plus } from 'lucide-react-native';
 import { View, Text, Pressable, Switch } from 'react-native';
 
 import type { WatchlistItem } from './hooks/useProfile';
@@ -14,6 +14,7 @@ import {
   useRemoveFromWatchlistMutation,
   useToggleWatchlistAlertMutation,
 } from '@/graphql/generated';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface ProfileWatchlistSectionProps {
   watchlist: WatchlistItem[];
@@ -30,13 +31,15 @@ function WatchlistRow({ item, onRemove, onToggleAlert }: WatchlistRowProps): Rea
   const router = useRouter();
   const isPositive = (item.changePct ?? 0) >= 0;
   const changeColor = isPositive ? 'text-gain' : 'text-loss';
-  const changeSign  = isPositive ? '+' : '';
+  const changeSign = isPositive ? '+' : '';
 
   return (
     <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
       {/* Tap → invest screen */}
       <Pressable
-        onPress={() => router.push({ pathname: '/invest/[symbol]', params: { symbol: item.symbol } })}
+        onPress={() =>
+          router.push({ pathname: '/invest/[symbol]', params: { symbol: item.symbol } })
+        }
         className="flex-1 active:opacity-70"
       >
         <Text className="text-sm font-semibold text-text-primary">{item.symbol}</Text>
@@ -45,7 +48,8 @@ function WatchlistRow({ item, onRemove, onToggleAlert }: WatchlistRowProps): Rea
             <Text className="text-sm font-mono text-text-primary">{formatINR(item.ltp)}</Text>
             {item.changePct !== undefined && item.changePct !== null && (
               <Text className={`text-xs font-mono ${changeColor}`}>
-                {changeSign}{item.changePct.toFixed(2)}%
+                {changeSign}
+                {item.changePct.toFixed(2)}%
               </Text>
             )}
           </View>
@@ -69,6 +73,26 @@ function WatchlistRow({ item, onRemove, onToggleAlert }: WatchlistRowProps): Rea
         accessibilityLabel={`Remove ${item.symbol} from watchlist`}
       >
         <Text className="text-loss text-xs font-medium">Remove</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function WatchlistHeader(): React.JSX.Element {
+  const tokens = useThemeTokens();
+  return (
+    <View className="mb-2 flex-row items-center justify-between">
+      <Text className="text-text-tertiary text-xs font-medium uppercase tracking-wide">
+        Watchlist
+      </Text>
+      <Pressable
+        onPress={() => router.push('/(tabs)/market' as never)}
+        accessibilityRole="button"
+        accessibilityLabel="Add stocks to your watchlist"
+        className="flex-row items-center gap-1 active:opacity-70"
+      >
+        <Plus size={14} color={tokens.accent} />
+        <Text className="text-accent text-xs font-medium">Add</Text>
       </Pressable>
     </View>
   );
@@ -104,9 +128,7 @@ export function ProfileWatchlistSection({
   if (watchlist.length === 0) {
     return (
       <View className="mx-4 mt-4">
-        <Text className="text-xs font-medium uppercase tracking-wide text-text-tertiary mb-2">
-          Watchlist
-        </Text>
+        <WatchlistHeader />
         <View className="rounded-2xl bg-surface-elevated">
           <EmptyState
             inline
@@ -121,9 +143,7 @@ export function ProfileWatchlistSection({
 
   return (
     <View className="mx-4 mt-4">
-      <Text className="text-xs font-medium uppercase tracking-wide text-text-tertiary mb-2">
-        Watchlist
-      </Text>
+      <WatchlistHeader />
       <View className="rounded-2xl bg-surface-elevated overflow-hidden">
         {watchlist.map((item) => (
           <WatchlistRow

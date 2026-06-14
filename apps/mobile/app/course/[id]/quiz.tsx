@@ -13,11 +13,12 @@ import { useQuiz } from '@/features/learn/hooks/useQuiz';
 import { QuizSkeleton } from '@/features/learn/LearnSkeletons';
 import { QuizQuestion } from '@/features/learn/QuizQuestion';
 import { QuizResults } from '@/features/learn/QuizResults';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export default function QuizScreen(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const quiz = useQuiz(id ?? '');
+  const tokens = useThemeTokens();
 
   if (quiz.phase === 'loading') {
     return (
@@ -76,7 +77,9 @@ export default function QuizScreen(): React.JSX.Element {
 
           {/* Next / Finish — disabled until an option is selected and feedback arrived */}
           <Pressable
-            disabled={quiz.selectedIndex === null || quiz.feedback === null || quiz.phase === 'submitting'}
+            disabled={
+              quiz.selectedIndex === null || quiz.feedback === null || quiz.phase === 'submitting'
+            }
             onPress={quiz.next}
             className={`rounded-xl py-3.5 items-center ${
               quiz.selectedIndex === null || quiz.feedback === null

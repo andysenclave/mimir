@@ -17,4 +17,8 @@ export class AuthUser {
 
   @Field()
   onboardingDone!: boolean;
+
+  /** Consecutive-day app-open streak (MM-077). */
+  @Field()
+  streakCount!: number;
 }

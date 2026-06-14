@@ -2,15 +2,18 @@
 // Data is provided by useInvestScreen; this component is pure layout.
 
 import { ScrollView, View } from 'react-native';
-import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { useSheet } from '@/features/sheets/SheetProvider';
-import { SoftPrompt } from '@/features/notifications/SoftPrompt';
-import { StockHeader } from './StockHeader';
+
+import { AIInsightCard } from './AIInsightCard';
 import { LivePriceTicker } from './LivePriceTicker';
 import { MiniChart } from './MiniChart';
-import { AIInsightCard } from './AIInsightCard';
 import { OrderForm } from './OrderForm';
+import { StockHeader } from './StockHeader';
+
 import type { UseInvestScreenResult } from './hooks/useInvestScreen';
+
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { SoftPrompt } from '@/features/notifications/SoftPrompt';
+import { useSheet } from '@/features/sheets/SheetProvider';
 
 interface InvestContentProps {
   result: UseInvestScreenResult;
@@ -62,10 +65,7 @@ export function InvestContent({ result }: InvestContentProps): React.JSX.Element
           change={stock?.change}
           changePct={stock?.changePct}
         />
-        <MiniChart
-          points={intradayPoints}
-          positive={(stock?.changePct ?? 0) >= 0}
-        />
+        <MiniChart points={intradayPoints} positive={(stock?.changePct ?? 0) >= 0} />
         <AIInsightCard symbol={stock?.symbol ?? ''} />
         {softPromptVisible ? (
           <View className="mx-4 mt-4">
@@ -80,7 +80,9 @@ export function InvestContent({ result }: InvestContentProps): React.JSX.Element
             symbol={stock?.symbol ?? ''}
             ltp={stock?.ltp ?? 0}
             cashRemaining={cashRemaining}
-            holding={holding ? { quantity: holding.quantity, avgBuyPrice: holding.avgBuyPrice } : null}
+            holding={
+              holding ? { quantity: holding.quantity, avgBuyPrice: holding.avgBuyPrice } : null
+            }
             side={side}
             quantity={quantity}
             onSideChange={setSide}

@@ -2,8 +2,9 @@
 // Shows full order details when a TradeHistoryRow is tapped.
 // Uses BottomSheetModal from @gorhom/bottom-sheet (SheetProvider pattern, prompt 23).
 
-import { View, Text, Pressable } from 'react-native';
 import { formatINR } from '@mimir/shared';
+import { View, Text, Pressable } from 'react-native';
+
 import type { OrderHistoryQuery } from '@/graphql/generated';
 
 type TradeItem = OrderHistoryQuery['orderHistory'][number];
@@ -47,7 +48,10 @@ export function TradeDetailModal({ trade, onClose }: TradeDetailModalProps): Rea
       </View>
 
       {/* Detail rows */}
-      <DetailRow label="Quantity" value={`${trade.quantity} share${trade.quantity > 1 ? 's' : ''}`} />
+      <DetailRow
+        label="Quantity"
+        value={`${trade.quantity} share${trade.quantity > 1 ? 's' : ''}`}
+      />
       <DetailRow label="Price per share" value={formatINR(trade.priceAtExecution)} mono />
       <DetailRow label="Total value" value={formatINR(trade.orderValue)} mono highlight />
       {trade.realizedPnl != null && (
@@ -78,7 +82,14 @@ interface DetailRowProps {
   pnl?: number;
 }
 
-function DetailRow({ label, value, mono, highlight, small, pnl }: DetailRowProps): React.JSX.Element {
+function DetailRow({
+  label,
+  value,
+  mono,
+  highlight,
+  small,
+  pnl,
+}: DetailRowProps): React.JSX.Element {
   let valueClass = 'text-text-primary';
   if (highlight) valueClass = 'text-text-primary font-semibold';
   if (pnl !== undefined) valueClass = pnl >= 0 ? 'text-gain' : 'text-loss';

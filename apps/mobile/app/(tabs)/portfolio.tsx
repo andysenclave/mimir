@@ -2,14 +2,14 @@
 // Prompt 30: thin screen wiring hook + feature components.
 // SheetProvider here so sell-from-portfolio flow has access to OrderConfirmationSheet.
 
-import { SheetProvider } from '@/features/sheets/SheetProvider';
+import { ErrorState } from '@/components/layout/ErrorState';
 import {
   PortfolioContent,
   PortfolioEmptyState,
   PortfolioSkeleton,
   usePortfolio,
 } from '@/features/portfolio';
-import { ErrorState } from '@/components/layout/ErrorState';
+import { SheetProvider } from '@/features/sheets/SheetProvider';
 
 function PortfolioScreen(): React.JSX.Element {
   const { portfolio, loading, error, refreshing, onRefresh } = usePortfolio();
@@ -20,13 +20,7 @@ function PortfolioScreen(): React.JSX.Element {
   }
   if (!portfolio?.holdings.length) return <PortfolioEmptyState />;
 
-  return (
-    <PortfolioContent
-      portfolio={portfolio}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-    />
-  );
+  return <PortfolioContent portfolio={portfolio} refreshing={refreshing} onRefresh={onRefresh} />;
 }
 
 export default function PortfolioTab(): React.JSX.Element {

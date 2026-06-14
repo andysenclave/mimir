@@ -165,6 +165,6 @@ export class NseIndiaProvider extends MarketDataProvider {
     // "symbols" are index names (e.g. "NIFTY50 DIVIDEND POINTS") that aren't
     // tradeable equities. MarketService computes top movers from the polled
     // MarketSnapshot (real NSE stocks) instead — see getTopMoversFromSnapshots().
-    return { indices, topGainers: [], topLosers: [], sectors, fetchedAt: now };
+    return { indices, globalIndices: [], topGainers: [], topLosers: [], sectors, fetchedAt: now };
   }
 }

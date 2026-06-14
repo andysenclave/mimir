@@ -10,13 +10,14 @@ import { ScrollView, Text, View, Pressable } from 'react-native';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { SettingsHeader } from '@/features/profile/SettingsHeader';
 import { useProfileQuery, useUpdatePreferredTierMutation } from '@/graphql/generated';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 const SELECTABLE_TIERS: BudgetTierId[] = ['TIER_10K', 'TIER_25K', 'TIER_50K', 'TIER_1L'];
 
 export default function TradingPreferencesScreen(): React.JSX.Element {
   const { data } = useProfileQuery();
   const [updatePreferredTier, { loading }] = useUpdatePreferredTierMutation();
+  const tokens = useThemeTokens();
 
   const stats = data?.profile.stats;
   const activeTier = stats?.budgetTierId as BudgetTierId | undefined;
@@ -38,8 +39,8 @@ export default function TradingPreferencesScreen(): React.JSX.Element {
         <View className="gap-2">
           <Text className="text-sm font-semibold text-text-primary">Monthly budget tier</Text>
           <Text className="text-xs leading-5 text-text-secondary">
-            Changes apply from next month&apos;s budget. Your current budget and holdings stay exactly
-            as they are.
+            Changes apply from next month&apos;s budget. Your current budget and holdings stay
+            exactly as they are.
           </Text>
 
           <View className="mt-2 gap-2.5">
@@ -62,7 +63,9 @@ export default function TradingPreferencesScreen(): React.JSX.Element {
                       {BUDGET_TIERS[tier].label}
                     </Text>
                     <Text className="text-xs text-text-tertiary">
-                      {isActive ? 'Current cycle' : `₹${BUDGET_TIERS[tier].amount.toLocaleString('en-IN')} / month`}
+                      {isActive
+                        ? 'Current cycle'
+                        : `₹${BUDGET_TIERS[tier].amount.toLocaleString('en-IN')} / month`}
                     </Text>
                   </View>
                   {isSelected && <Check size={18} color={tokens.accent} strokeWidth={2} />}

@@ -31,6 +31,7 @@ function makeSnapshotRow(symbol: string, changePct: number) {
 function makeOverview(): MarketOverview {
   return {
     indices: [{ symbol: '^NSEI', name: 'NIFTY 50', ltp: 22000, change: 100, changePct: 0.45, fetchedAt: new Date() }],
+    globalIndices: [],
     topGainers: [makeQuote('RELIANCE', 2840)],
     topLosers: [makeQuote('TCS', 3920)],
     sectors: [{ name: 'NIFTY IT', displayName: 'IT', changePct: -0.5 }],
@@ -64,7 +65,8 @@ const mockProvider: jest.Mocked<MarketDataProvider> = {
   getQuotes: jest.fn(),
   getMarketOverview: jest.fn(),
   getIndexQuote: jest.fn(),
-    getIntradayData: jest.fn(),
+  getIntradayData: jest.fn(),
+  getGlobalIndices: jest.fn().mockResolvedValue([]),
 };
 
 const mockPubSub = {

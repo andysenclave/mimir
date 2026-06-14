@@ -7,12 +7,13 @@ import { Redirect, Tabs } from 'expo-router';
 import { BookOpen, LayoutGrid, LineChart, User } from 'lucide-react-native';
 import { View } from 'react-native';
 
-import { useAuth } from '@/lib/auth/AuthProvider';
-import { tokens } from '@/theme/tokens';
 import { useStreakSetup } from '@/features/notifications/useStreakSetup';
+import { useAuth } from '@/lib/auth/AuthProvider';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export default function TabsLayout(): React.JSX.Element {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const tokens = useThemeTokens();
   useStreakSetup(); // MM-039 — schedules streak reminder at 8 PM IST if not opened today
 
   if (isLoading) return <View className="flex-1 bg-bg-primary" />;

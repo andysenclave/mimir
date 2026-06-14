@@ -14,6 +14,14 @@ query MarketOverview {
       changePct
       fetchedAt
     }
+    globalIndices {
+      symbol
+      name
+      ltp
+      change
+      changePct
+      fetchedAt
+    }
     topGainers {
       symbol
       name

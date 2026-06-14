@@ -7,20 +7,19 @@ import { ScrollView, Text, View } from 'react-native';
 import { ErrorState } from '@/components/layout/ErrorState';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { StreakPill } from '@/components/ui/StreakPill';
 import { CourseCard } from '@/features/learn/CourseCard';
 import { useAISuggestions } from '@/features/learn/hooks/useAISuggestions';
 import { useLearnHub } from '@/features/learn/hooks/useLearnHub';
 import { LearnListSkeleton } from '@/features/learn/LearnSkeletons';
 import { SuggestionCard } from '@/features/learn/SuggestionCard';
 import { TodaysConceptCard } from '@/features/learn/TodaysConceptCard';
+import { useMeQuery } from '@/graphql/generated';
 
 export default function LearnTab(): React.JSX.Element {
   const { courses, todaysConcept, loading, error, refetch } = useLearnHub();
-  const {
-    suggestions,
-    loading: suggestionsLoading,
-    onSuggestionPress,
-  } = useAISuggestions();
+  const { suggestions, loading: suggestionsLoading, onSuggestionPress } = useAISuggestions();
+  const { data: meData } = useMeQuery({ fetchPolicy: 'cache-first' });
 
   if (error && courses.length === 0) {
     return <ErrorState message="Couldn't load courses." onRetry={() => void refetch()} />;
@@ -33,10 +32,17 @@ export default function LearnTab(): React.JSX.Element {
         contentContainerStyle={{ paddingBottom: 32 }}
       >
         <View className="px-4 pt-4 gap-5">
-          <Text className="text-2xl font-bold text-text-primary">Learn</Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-2xl font-bold text-text-primary">Learn</Text>
+            <StreakPill count={meData?.me.streakCount ?? 0} />
+          </View>
 
           {todaysConcept !== null && (
-            <TodaysConceptCard title={todaysConcept.title} body={todaysConcept.body} />
+            <TodaysConceptCard
+              title={todaysConcept.title}
+              body={todaysConcept.body}
+              onTakeQuiz={courses[0] ? () => router.push(`/course/${courses[0]?.id}`) : undefined}
+            />
           )}
 
           {/* AI suggestions — hidden entirely on error or empty (MM-052) */}

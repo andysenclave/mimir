@@ -6,12 +6,10 @@ import { router } from 'expo-router';
 import { SearchX } from 'lucide-react-native';
 import { ScrollView, Text, View, Pressable } from 'react-native';
 
-
 import type { StockSearchResult } from './hooks/useStockSearch';
 
 import { EmptyState } from '@/components/layout/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
-
 
 interface StockSearchResultsProps {
   results: StockSearchResult[];
@@ -56,10 +54,14 @@ export function StockSearchResults({
         return (
           <Pressable
             key={stock.symbol}
-            onPress={() => router.push({ pathname: '/invest/[symbol]', params: { symbol: stock.symbol } })}
+            onPress={() =>
+              router.push({ pathname: '/invest/[symbol]', params: { symbol: stock.symbol } })
+            }
             className="flex-row items-center justify-between rounded-xl border border-border-subtle bg-bg-secondary px-4 py-3.5 active:opacity-70"
           >
-            <Text className="font-mono text-base font-semibold text-text-primary">{stock.symbol}</Text>
+            <Text className="font-mono text-base font-semibold text-text-primary">
+              {stock.symbol}
+            </Text>
             <View className="items-end">
               <Text className="font-mono text-sm text-text-primary">
                 {stock.ltp > 0 ? formatINR(stock.ltp) : '—'}

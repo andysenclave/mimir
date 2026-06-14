@@ -79,6 +79,15 @@ export class MockMarketDataProvider extends MarketDataProvider {
       { name: 'NIFTY MEDIA', displayName: 'Media', changePct: -0.8 },
     ];
     const fetchedAt = new Date();
-    return { indices, topGainers: [], topLosers: [], sectors, fetchedAt };
+    return { indices, globalIndices: [], topGainers: [], topLosers: [], sectors, fetchedAt };
+  }
+
+  async getGlobalIndices(): Promise<IndexQuote[]> {
+    this.logger.debug('[mock] getGlobalIndices');
+    const fetchedAt = new Date();
+    return [
+      { symbol: '^GSPC', name: 'S&P 500', ltp: 5248.3, change: 32.4, changePct: 0.62, fetchedAt },
+      { symbol: '^IXIC', name: 'NASDAQ', ltp: 16742.8, change: 188.5, changePct: 1.14, fetchedAt },
+    ];
   }
 }

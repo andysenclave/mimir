@@ -1,70 +1,66 @@
-// MM-036 — Stats row: total return, budget, courses done, quiz score.
-// Phase 1: coursesDone + quizScore are always 0; shown as "—" placeholder.
+// MM-036 / MM-075 — 2×2 stat-card grid: Total Return, Monthly Budget,
+// Courses Done, Quiz Score. Phase 1: coursesDone + quizScore may be 0 → "—".
 
-import { View, Text } from 'react-native';
 import { formatINR } from '@mimir/shared';
+import { Text, View } from 'react-native';
+
 import type { ProfileData } from './hooks/useProfile';
 
 interface ProfileStatsRowProps {
   stats: ProfileData['stats'];
 }
 
-interface StatCellProps {
+interface StatCardProps {
   label: string;
   value: string;
   valueClass?: string;
+  sub?: string;
+  subClass?: string;
 }
 
-function StatCell({ label, value, valueClass = 'text-text-primary' }: StatCellProps): React.JSX.Element {
+function StatCard({
+  label,
+  value,
+  valueClass = 'text-text-primary',
+  sub,
+  subClass = 'text-text-tertiary',
+}: StatCardProps): React.JSX.Element {
   return (
-    <View className="flex-1 items-center gap-1">
-      <Text className={`text-sm font-mono font-semibold ${valueClass}`}>{value}</Text>
-      <Text className="text-xs text-text-tertiary text-center">{label}</Text>
+    <View className="bg-surface-elevated flex-1 gap-1 rounded-2xl px-4 py-3.5">
+      <Text className="text-text-tertiary text-xs">{label}</Text>
+      <Text className={`font-mono text-lg font-bold ${valueClass}`}>{value}</Text>
+      {sub !== undefined ? <Text className={`font-mono text-xs ${subClass}`}>{sub}</Text> : null}
     </View>
   );
 }
 
 export function ProfileStatsRow({ stats }: ProfileStatsRowProps): React.JSX.Element {
-  const returnColor = stats.totalReturnPct >= 0 ? 'text-gain' : 'text-loss';
-  const returnSign  = stats.totalReturnPct >= 0 ? '+' : '';
-  const returnPct   = `${returnSign}${stats.totalReturnPct.toFixed(2)}%`;
+  const positive = stats.totalReturnPct >= 0;
+  const returnColor = positive ? 'text-gain' : 'text-loss';
+  const sign = positive ? '+' : '';
 
   return (
-    <View className="mx-4 rounded-2xl bg-surface-elevated px-4 py-4">
-      <View className="flex-row">
-        <StatCell
+    <View className="mx-4 mt-4 gap-3">
+      <View className="flex-row gap-3">
+        <StatCard
           label="Total Return"
-          value={`${returnSign}${formatINR(stats.totalReturnInr)}`}
+          value={`${sign}${formatINR(stats.totalReturnInr)}`}
           valueClass={returnColor}
+          sub={`${sign}${stats.totalReturnPct.toFixed(2)}%`}
+          subClass={returnColor}
         />
-        <View className="w-px bg-border-subtle" />
-        <StatCell
-          label="Return %"
-          value={returnPct}
-          valueClass={returnColor}
-        />
-        <View className="w-px bg-border-subtle" />
-        <StatCell
-          label="Cash Left"
-          value={formatINR(stats.cashRemaining)}
-        />
+        <StatCard label="Monthly Budget" value={stats.budgetTierLabel} sub="/month" />
       </View>
-      <View className="mt-3 pt-3 border-t border-border-subtle flex-row">
-        <StatCell
-          label="Budget Tier"
-          value={stats.budgetTierLabel}
-        />
-        <View className="w-px bg-border-subtle" />
-        <StatCell
-          label="Courses"
+      <View className="flex-row gap-3">
+        <StatCard
+          label="Courses Done"
           value={stats.coursesDone > 0 ? String(stats.coursesDone) : '—'}
-          valueClass="text-text-tertiary"
+          valueClass={stats.coursesDone > 0 ? 'text-text-primary' : 'text-text-tertiary'}
         />
-        <View className="w-px bg-border-subtle" />
-        <StatCell
+        <StatCard
           label="Quiz Score"
-          value={stats.quizScore > 0 ? String(stats.quizScore) : '—'}
-          valueClass="text-text-tertiary"
+          value={stats.quizScore > 0 ? `${stats.quizScore}%` : '—'}
+          valueClass={stats.quizScore > 0 ? 'text-accent' : 'text-text-tertiary'}
         />
       </View>
     </View>

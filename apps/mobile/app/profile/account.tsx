@@ -38,7 +38,8 @@ function AccountSettings(): React.JSX.Element {
   const [requestDeletion] = useRequestAccountDeletionMutation();
 
   const trimmed = name.trim();
-  const dirty = profile !== undefined && trimmed.length > 0 && trimmed !== (profile.displayName ?? '');
+  const dirty =
+    profile !== undefined && trimmed.length > 0 && trimmed !== (profile.displayName ?? '');
 
   async function onSave(): Promise<void> {
     if (!dirty) return;
@@ -77,7 +78,12 @@ function AccountSettings(): React.JSX.Element {
             maxLength={40}
             autoCapitalize="words"
           />
-          <Input label="Email" value={profile?.email ?? ''} editable={false} hint="Managed by your sign-in. Contact support to change it." />
+          <Input
+            label="Email"
+            value={profile?.email ?? ''}
+            editable={false}
+            hint="Managed by your sign-in. Contact support to change it."
+          />
           <Button onPress={() => void onSave()} disabled={!dirty} loading={saving}>
             {saved && !dirty ? 'Saved' : 'Save changes'}
           </Button>

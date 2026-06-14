@@ -179,13 +179,16 @@ export class MarketService {
       return this.overviewCache.data;
     }
 
-    const [base, movers] = await Promise.all([
+    const [base, movers, globalIndices] = await Promise.all([
       this.provider.getMarketOverview(),
       this.getTopMoversFromSnapshots(),
+      // Global indices degrade to [] on failure — never error the whole query.
+      this.provider.getGlobalIndices().catch(() => []),
     ]);
 
     const data: MarketOverview = {
       ...base,
+      globalIndices,
       topGainers: movers.topGainers,
       topLosers: movers.topLosers,
     };

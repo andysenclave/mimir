@@ -4,7 +4,7 @@
 import { BookOpen, Lightbulb } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface SuggestionCardProps {
   title: string;
@@ -19,6 +19,7 @@ export function SuggestionCard({
   ctaLink,
   onPress,
 }: SuggestionCardProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const Icon = ctaLink.startsWith('course:') ? BookOpen : Lightbulb;
 
   return (

@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface MiniChartProps {
   points: Array<{ timestamp: number; price: number }>;
@@ -14,6 +14,7 @@ interface MiniChartProps {
 }
 
 export function MiniChart({ points, positive }: MiniChartProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const color = positive ? tokens.gain : tokens.loss;
 
   // CartesianChart requires numeric x/y keys declared in xKey + yKeys.

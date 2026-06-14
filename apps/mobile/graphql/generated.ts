@@ -57,6 +57,7 @@ export type AuthUser = {
   email: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   onboardingDone: Scalars['Boolean']['output'];
+  streakCount: Scalars['Float']['output'];
 };
 
 export type CompleteLessonInput = {
@@ -142,6 +143,8 @@ export type Lesson = {
 export type MarketOverviewGql = {
   __typename?: 'MarketOverviewGql';
   fetchedAt: Scalars['DateTime']['output'];
+  /** Global indices (S&P 500, NASDAQ). */
+  globalIndices: Array<IndexQuoteGql>;
   indices: Array<IndexQuoteGql>;
   sectors: Array<SectorPerformanceGql>;
   topGainers: Array<StockQuoteGql>;
@@ -585,6 +588,7 @@ export type UserProfileGql = {
   id: Scalars['ID']['output'];
   memberSince: Scalars['Float']['output'];
   stats: ProfileStatsGql;
+  streakCount: Scalars['Float']['output'];
   watchlist: Array<WatchlistItemGql>;
 };
 
@@ -768,6 +772,15 @@ export type MarketOverviewQuery = {
       changePct: number;
       fetchedAt: string;
     }>;
+    globalIndices: Array<{
+      __typename?: 'IndexQuoteGql';
+      symbol: string;
+      name: string;
+      ltp: number;
+      change: number;
+      changePct: number;
+      fetchedAt: string;
+    }>;
     topGainers: Array<{
       __typename?: 'StockQuoteGql';
       symbol: string;
@@ -834,6 +847,7 @@ export type MeQuery = {
     email: string;
     displayName: string | null;
     onboardingDone: boolean;
+    streakCount: number;
   };
 };
 
@@ -958,6 +972,7 @@ export type ProfileFieldsFragment = {
   email: string;
   displayName: string | null;
   memberSince: number;
+  streakCount: number;
   stats: {
     __typename?: 'ProfileStatsGql';
     totalReturnInr: number;
@@ -988,6 +1003,7 @@ export type ProfileQuery = {
     email: string;
     displayName: string | null;
     memberSince: number;
+    streakCount: number;
     stats: {
       __typename?: 'ProfileStatsGql';
       totalReturnInr: number;
@@ -1021,6 +1037,7 @@ export type UpdateDisplayNameMutation = {
     email: string;
     displayName: string | null;
     memberSince: number;
+    streakCount: number;
     stats: {
       __typename?: 'ProfileStatsGql';
       totalReturnInr: number;
@@ -1054,6 +1071,7 @@ export type UpdatePreferredTierMutation = {
     email: string;
     displayName: string | null;
     memberSince: number;
+    streakCount: number;
     stats: {
       __typename?: 'ProfileStatsGql';
       totalReturnInr: number;
@@ -1252,6 +1270,7 @@ export const ProfileFieldsFragmentDoc = gql`
     email
     displayName
     memberSince
+    streakCount
     stats {
       totalReturnInr
       totalReturnPct
@@ -1835,6 +1854,14 @@ export const MarketOverviewDocument = gql`
         changePct
         fetchedAt
       }
+      globalIndices {
+        symbol
+        name
+        ltp
+        change
+        changePct
+        fetchedAt
+      }
       topGainers {
         symbol
         name
@@ -2048,6 +2075,7 @@ export const MeDocument = gql`
       email
       displayName
       onboardingDone
+      streakCount
     }
   }
 `;

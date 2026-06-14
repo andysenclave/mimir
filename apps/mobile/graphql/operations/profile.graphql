@@ -5,6 +5,7 @@ fragment ProfileFields on UserProfileGql {
   email
   displayName
   memberSince
+  streakCount
   stats {
     totalReturnInr
     totalReturnPct

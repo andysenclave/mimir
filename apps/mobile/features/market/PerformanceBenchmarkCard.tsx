@@ -3,8 +3,8 @@
 // Hides gracefully on error — never shows an error state (AC: "hidden gracefully").
 // All % values in font-mono per CLAUDE.md §14.
 
-import { Text, View } from 'react-native';
 import clsx from 'clsx';
+import { Text, View } from 'react-native';
 
 import { Skeleton } from '@/components/ui/Skeleton';
 import { usePortfolioPerformanceQuery } from '@/graphql/generated';
@@ -101,19 +101,13 @@ export function PerformanceBenchmarkCard(): React.JSX.Element | null {
         {/* Portfolio row — only shown when user has holdings */}
         {perf.hasHoldings && (
           <>
-            <BenchmarkRow
-              label="Your Portfolio"
-              pct={perf.portfolioChangePct}
-              isPortfolio
-            />
+            <BenchmarkRow label="Your Portfolio" pct={perf.portfolioChangePct} isPortfolio />
             <View className="h-px bg-border-subtle" />
           </>
         )}
 
         <BenchmarkRow label="NIFTY 50" pct={perf.niftyChangePct} />
-        {perf.sp500ChangePct !== null && (
-          <BenchmarkRow label="S&P 500" pct={perf.sp500ChangePct} />
-        )}
+        {perf.sp500ChangePct !== null && <BenchmarkRow label="S&P 500" pct={perf.sp500ChangePct} />}
       </View>
 
       {/* Template-based copy — never LLM-generated (CLAUDE.md §9) */}

@@ -4,18 +4,37 @@
 
 import { ScrollView, View } from 'react-native';
 
-import { Skeleton } from '@/components/ui/Skeleton';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { Skeleton } from '@/components/ui/Skeleton';
 
-// ─── Ticker bar ───────────────────────────────────────────────────────────────
+// ─── Header + tabs ──────────────────────────────────────────────────────────
 
-function TickerBarSkeleton(): React.JSX.Element {
+function HeaderSkeleton(): React.JSX.Element {
   return (
-    <View className="border-b border-border-subtle bg-bg-secondary px-4 py-3">
-      <View className="flex-row gap-5">
-        <Skeleton width={90} height={14} />
-        <Skeleton width={90} height={14} />
-        <Skeleton width={90} height={14} />
+    <View className="px-4 pb-3 pt-2">
+      <Skeleton width={110} height={26} />
+      <Skeleton width={170} height={12} className="mt-2" />
+      <View className="mt-3 flex-row gap-2">
+        <Skeleton width={84} height={30} className="rounded-full" />
+        <Skeleton width={72} height={30} className="rounded-full" />
+        <Skeleton width={76} height={30} className="rounded-full" />
+      </View>
+    </View>
+  );
+}
+
+// ─── Indian indices ───────────────────────────────────────────────────────────
+
+const INDEX_CARDS = ['i1', 'i2', 'i3'] as const;
+
+function IndicesSkeleton(): React.JSX.Element {
+  return (
+    <View className="px-4">
+      <Skeleton width={96} height={12} className="mb-2" />
+      <View className="flex-row gap-2">
+        {INDEX_CARDS.map((c) => (
+          <Skeleton key={c} className="flex-1" height={74} />
+        ))}
       </View>
     </View>
   );
@@ -83,11 +102,12 @@ function TopMoversListSkeleton(): React.JSX.Element {
 export function MarketOverviewSkeleton(): React.JSX.Element {
   return (
     <ScreenContainer>
-      <TickerBarSkeleton />
+      <HeaderSkeleton />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 20, gap: 24 }}
+        contentContainerStyle={{ paddingVertical: 16, gap: 24 }}
       >
+        <IndicesSkeleton />
         <SectorHeatmapSkeleton />
         <TopMoversListSkeleton />
       </ScrollView>

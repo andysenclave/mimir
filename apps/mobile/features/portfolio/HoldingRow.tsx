@@ -1,9 +1,9 @@
-// Single holding row — symbol, qty, avgBuyPrice, LTP, unrealized P&L.
+// Single holding row (MM-073) — symbol + shares, "Avg → LTP", prominent P&L + % pill.
 // Tappable → navigates to invest/[symbol].
 
 import { formatINR } from '@mimir/shared';
 import { router } from 'expo-router';
-import { Pressable, View, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import type { PortfolioHolding } from './hooks/usePortfolio';
 
@@ -12,8 +12,7 @@ interface HoldingRowProps {
 }
 
 export function HoldingRow({ holding }: HoldingRowProps): React.JSX.Element {
-  const { symbol, name, quantity, avgBuyPrice, ltp, unrealizedPnl, unrealizedPnlPct, totalValue } =
-    holding;
+  const { symbol, quantity, avgBuyPrice, ltp, unrealizedPnl, unrealizedPnlPct } = holding;
   const isPositive = unrealizedPnl >= 0;
   const pnlColor = isPositive ? 'text-gain' : 'text-loss';
   const pnlSign = isPositive ? '+' : '';
@@ -21,33 +20,29 @@ export function HoldingRow({ holding }: HoldingRowProps): React.JSX.Element {
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/invest/[symbol]', params: { symbol } })}
-      className="flex-row items-center justify-between px-4 py-3.5 active:opacity-70 border-b border-border-subtle"
+      className="flex-row items-center justify-between border-b border-border-subtle px-4 py-3.5 active:opacity-70"
     >
-      {/* Left: symbol + name + qty */}
-      <View className="flex-1 gap-0.5 mr-3">
-        <Text className="text-text-primary text-sm font-semibold">{symbol}</Text>
-        {name ? (
-          <Text className="text-text-secondary text-xs" numberOfLines={1}>{name}</Text>
-        ) : null}
-        <Text className="text-text-tertiary text-xs font-mono">
-          {quantity} shares · avg {formatINR(avgBuyPrice)}
+      {/* Left: symbol + shares + avg → LTP */}
+      <View className="mr-3 flex-1 gap-1">
+        <View className="flex-row items-center gap-2">
+          <Text className="text-text-primary text-sm font-semibold">{symbol}</Text>
+          <Text className="text-text-tertiary font-mono text-xs">{quantity} shares</Text>
+        </View>
+        <Text className="text-text-tertiary font-mono text-xs">
+          Avg {formatINR(avgBuyPrice)} → LTP {formatINR(ltp)}
         </Text>
       </View>
 
-      {/* Right: total value + P&L */}
-      <View className="items-end gap-0.5">
-        <Text className="text-text-primary text-sm font-mono font-medium">
-          {formatINR(totalValue)}
+      {/* Right: prominent P&L + % pill */}
+      <View className="items-end gap-1">
+        <Text className={`font-mono text-sm font-semibold ${pnlColor}`}>
+          {pnlSign}
+          {formatINR(unrealizedPnl)}
         </Text>
-        <Text className="text-text-secondary text-xs font-mono">
-          LTP {formatINR(ltp)}
-        </Text>
-        <View className="flex-row items-center gap-1">
-          <Text className={`text-xs font-mono ${pnlColor}`}>
-            {pnlSign}{formatINR(unrealizedPnl)}
-          </Text>
-          <Text className={`text-xs font-mono ${pnlColor}`}>
-            ({pnlSign}{unrealizedPnlPct.toFixed(2)}%)
+        <View className={`rounded-full px-2 py-0.5 ${isPositive ? 'bg-gain/10' : 'bg-loss/10'}`}>
+          <Text className={`font-mono text-xs font-medium ${pnlColor}`}>
+            {pnlSign}
+            {unrealizedPnlPct.toFixed(2)}%
           </Text>
         </View>
       </View>

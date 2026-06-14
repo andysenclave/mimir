@@ -3,7 +3,13 @@
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef } from 'react';
-import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, Text, View } from 'react-native';
+import {
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import { BackHeader } from '@/components/layout/BackHeader';
 import { ErrorState } from '@/components/layout/ErrorState';

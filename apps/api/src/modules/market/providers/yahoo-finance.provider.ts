@@ -36,6 +36,12 @@ const YAHOO_INDEX_MAP: ReadonlyArray<{ yahoo: string; name: string; nseKey: stri
   { yahoo: '^BSESN',   name: 'SENSEX',     nseKey: 'SENSEX'      },
 ];
 
+// Global indices shown in the "Global Markets" section (MM-077).
+const YAHOO_GLOBAL_MAP: ReadonlyArray<{ yahoo: string; name: string }> = [
+  { yahoo: '^GSPC', name: 'S&P 500' },
+  { yahoo: '^IXIC', name: 'NASDAQ' },
+];
+
 const YAHOO_SECTOR_MAP: ReadonlyArray<{ yahoo: string; name: string; displayName: string }> = [
   { yahoo: '^NSEBANK',   name: 'NIFTY BANK',   displayName: 'Banking' },
   { yahoo: '^CNXIT',     name: 'NIFTY IT',     displayName: 'IT'      },
@@ -83,6 +89,25 @@ export class YahooFinanceProvider extends MarketDataProvider {
     };
   }
 
+  async getGlobalIndices(): Promise<IndexQuote[]> {
+    const results = await Promise.allSettled(
+      YAHOO_GLOBAL_MAP.map(async (m) => {
+        const q = (await this.yf.quote(m.yahoo)) as unknown as YahooQuote;
+        return {
+          symbol: m.yahoo,
+          name: m.name,
+          ltp: q.regularMarketPrice ?? 0,
+          change: q.regularMarketChange ?? 0,
+          changePct: q.regularMarketChangePercent ?? 0,
+          fetchedAt: new Date(),
+        } satisfies IndexQuote;
+      }),
+    );
+    return results
+      .filter((r): r is PromiseFulfilledResult<IndexQuote> => r.status === 'fulfilled')
+      .map((r) => r.value);
+  }
+
   async getMarketOverview(): Promise<MarketOverview> {
     const [indicesResults, sectorResults] = await Promise.all([
       Promise.allSettled(YAHOO_INDEX_MAP.map((m) => this.getIndexQuote(m.nseKey))),
@@ -101,7 +126,7 @@ export class YahooFinanceProvider extends MarketDataProvider {
       })
       .filter((s): s is SectorPerformance => s !== null);
 
-    return { indices, topGainers: [], topLosers: [], sectors, fetchedAt: new Date() };
+    return { indices, globalIndices: [], topGainers: [], topLosers: [], sectors, fetchedAt: new Date() };
   }
 
   // ─── Private ────────────────────────────────────────────────────────────────

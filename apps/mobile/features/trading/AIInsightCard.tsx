@@ -5,11 +5,10 @@
 //   - insight body is empty
 // Never shows an error toast — silent absence per CLAUDE.md §9.
 
-import { View, Text, Alert } from 'react-native';
 import { useEffect, useRef } from 'react';
-import { Sparkles } from 'lucide-react-native';
+import { View, Text, Alert } from 'react-native';
+
 import { useAiInsightQuery } from '@/graphql/generated';
-import { tokens } from '@/theme/tokens';
 
 interface AIInsightCardProps {
   symbol: string;
@@ -45,20 +44,16 @@ export function AIInsightCard({ symbol }: AIInsightCardProps): React.JSX.Element
 
   return (
     <View className="mx-4 mt-4 rounded-2xl bg-surface-elevated border border-border-subtle p-4 gap-3">
-      {/* Header */}
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
-          <Sparkles size={14} color={tokens.accent} strokeWidth={1.75} />
-          <Text className="text-accent text-xs font-semibold uppercase tracking-wide">
-            AI Insight
-          </Text>
+      {/* Header — indigo "AI" badge + label (v2 mockup) */}
+      <View className="flex-row items-center gap-2">
+        <View className="bg-accent h-6 w-6 items-center justify-center rounded-md">
+          <Text className="text-[10px] font-bold text-white">AI</Text>
         </View>
+        <Text className="text-accent text-sm font-semibold">AI Insight</Text>
       </View>
 
       {/* Body */}
-      <Text className="text-text-secondary text-sm leading-relaxed">
-        {insight.body}
-      </Text>
+      <Text className="text-text-secondary text-sm leading-relaxed">{insight.body}</Text>
 
       {/* Compliance footer — CLAUDE.md §19 */}
       <Text className="text-text-tertiary text-xs">

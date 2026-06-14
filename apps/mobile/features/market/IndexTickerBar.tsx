@@ -2,8 +2,8 @@
 // MM-024 subtask 1 — subscription-driven via the parent hook (polling at 15s).
 // All numerics: font-mono per CLAUDE.md §14.
 
-import { ScrollView, Text, View } from 'react-native';
 import clsx from 'clsx';
+import { ScrollView, Text, View } from 'react-native';
 
 import type { MarketIndexQuote } from './hooks/useMarketOverview';
 
@@ -32,16 +32,11 @@ function IndexPill({ index }: IndexPillProps): React.JSX.Element {
 
   return (
     <View className="flex-row items-center gap-2">
-      <Text
-        className="font-sans text-xs font-medium text-text-secondary"
-        numberOfLines={1}
-      >
+      <Text className="font-sans text-xs font-medium text-text-secondary" numberOfLines={1}>
         {index.name}
       </Text>
       <Text className="font-mono text-xs text-text-primary">{formatLtp(index.ltp)}</Text>
-      <Text
-        className={clsx('font-mono text-xs', positive ? 'text-gain' : 'text-loss')}
-      >
+      <Text className={clsx('font-mono text-xs', positive ? 'text-gain' : 'text-loss')}>
         {formatChange(index.changePct)}
       </Text>
     </View>

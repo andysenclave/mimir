@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import { forwardRef } from 'react';
 import { Text, TextInput, type TextInputProps, View } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export interface InputProps extends Omit<TextInputProps, 'placeholderTextColor'> {
   label?: string;
@@ -21,6 +21,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   { label, error, hint, size = 'md', mono, className, editable, ...rest },
   ref,
 ) {
+  const tokens = useThemeTokens();
   const isDisabled = editable === false;
 
   return (

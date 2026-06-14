@@ -5,9 +5,10 @@ import { Stack, router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { Pressable } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export default function LegalLayout(): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <Stack
       screenOptions={{

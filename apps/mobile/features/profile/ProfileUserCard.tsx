@@ -2,7 +2,10 @@
 // Avatar is initials-based (no upload in Phase 1). Member since formatted as "Jun 2026".
 
 import { View, Text } from 'react-native';
+
 import type { ProfileData } from './hooks/useProfile';
+
+import { StreakPill } from '@/components/ui/StreakPill';
 
 interface ProfileUserCardProps {
   profile: ProfileData;
@@ -46,6 +49,8 @@ export function ProfileUserCard({ profile }: ProfileUserCardProps): React.JSX.El
           Member since {formatMemberSince(profile.memberSince)}
         </Text>
       </View>
+
+      <StreakPill count={profile.streakCount} />
     </View>
   );
 }

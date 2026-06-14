@@ -11,10 +11,11 @@ import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { Button } from '@/components/ui/Button';
 import { SettingsHeader } from '@/features/profile/SettingsHeader';
 import { useRequestDataExportMutation } from '@/graphql/generated';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export default function PrivacySettingsScreen(): React.JSX.Element {
   const router = useRouter();
+  const tokens = useThemeTokens();
   const [requestExport, { loading }] = useRequestDataExportMutation();
   const [requested, setRequested] = useState(false);
 
@@ -32,7 +33,9 @@ export default function PrivacySettingsScreen(): React.JSX.Element {
         <View className="flex-row gap-3 rounded-xl border border-border-subtle bg-bg-secondary p-4">
           <MapPin size={18} color={tokens.text.tertiary} strokeWidth={1.75} />
           <View className="flex-1 gap-1">
-            <Text className="text-sm font-semibold text-text-primary">Your data stays in India</Text>
+            <Text className="text-sm font-semibold text-text-primary">
+              Your data stays in India
+            </Text>
             <Text className="text-xs leading-5 text-text-secondary">
               All your data is stored in the ap-south-1 (Mumbai) region, in line with the Digital
               Personal Data Protection Act, 2023.
@@ -48,7 +51,12 @@ export default function PrivacySettingsScreen(): React.JSX.Element {
             email you a download link.
           </Text>
           <View className="mt-1 flex-row items-center gap-2">
-            <Button onPress={() => void onExport()} loading={loading} fullWidth={false} variant="secondary">
+            <Button
+              onPress={() => void onExport()}
+              loading={loading}
+              fullWidth={false}
+              variant="secondary"
+            >
               <View className="flex-row items-center gap-2">
                 <Download size={16} color={tokens.text.primary} strokeWidth={1.75} />
                 <Text className="text-sm font-medium text-text-primary">
@@ -77,10 +85,15 @@ export default function PrivacySettingsScreen(): React.JSX.Element {
         <View className="gap-2">
           <Text className="text-sm font-semibold text-text-primary">Delete account</Text>
           <Text className="text-xs leading-5 text-text-secondary">
-            Manage account deletion from the Account screen. Your data is fully erased within 30 days.
+            Manage account deletion from the Account screen. Your data is fully erased within 30
+            days.
           </Text>
           <View className="mt-1">
-            <Button variant="secondary" onPress={() => router.push('/profile/account')} fullWidth={false}>
+            <Button
+              variant="secondary"
+              onPress={() => router.push('/profile/account')}
+              fullWidth={false}
+            >
               Go to Account
             </Button>
           </View>
@@ -91,6 +104,7 @@ export default function PrivacySettingsScreen(): React.JSX.Element {
 }
 
 function LegalRow({ label, onPress }: { label: string; onPress: () => void }): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <Pressable
       onPress={onPress}

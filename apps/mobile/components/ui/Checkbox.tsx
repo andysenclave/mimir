@@ -7,7 +7,7 @@ import { Pressable, View } from 'react-native';
 
 import type { ReactNode } from 'react';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface CheckboxProps {
   checked: boolean;
@@ -24,6 +24,7 @@ export function Checkbox({
   error,
   disabled,
 }: CheckboxProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <Pressable
       onPress={disabled ? undefined : () => onChange(!checked)}

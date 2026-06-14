@@ -5,7 +5,7 @@
 import { Globe, Smartphone } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 type Provider = 'google' | 'apple';
 
@@ -21,6 +21,7 @@ const LABEL: Record<Provider, string> = {
 };
 
 export function OAuthButton({ provider, onPress, disabled }: OAuthButtonProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const Icon = provider === 'google' ? Globe : Smartphone;
   return (
     <Pressable

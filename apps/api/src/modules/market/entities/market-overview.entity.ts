@@ -9,6 +9,9 @@ export class MarketOverviewGql {
   @Field(() => [IndexQuoteGql])
   indices!: IndexQuoteGql[];
 
+  @Field(() => [IndexQuoteGql], { description: 'Global indices (S&P 500, NASDAQ).' })
+  globalIndices!: IndexQuoteGql[];
+
   @Field(() => [StockQuoteGql])
   topGainers!: StockQuoteGql[];
 

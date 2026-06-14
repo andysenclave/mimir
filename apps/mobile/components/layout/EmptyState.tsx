@@ -16,8 +16,7 @@ import { Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/Button';
-import { tokens } from '@/theme/tokens';
-
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface EmptyStateProps {
   icon: LucideIcon;
@@ -40,6 +39,7 @@ export function EmptyState({
   disclaimer = false,
   inline = false,
 }: EmptyStateProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const showCta = ctaLabel !== undefined && onCtaPress !== undefined;
 
   return (
@@ -72,7 +72,12 @@ export function EmptyState({
       </View>
 
       {showCta && (
-        <Button onPress={onCtaPress} variant="primary" size={inline ? 'sm' : 'md'} fullWidth={!inline}>
+        <Button
+          onPress={onCtaPress}
+          variant="primary"
+          size={inline ? 'sm' : 'md'}
+          fullWidth={!inline}
+        >
           {ctaLabel}
         </Button>
       )}

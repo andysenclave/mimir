@@ -87,7 +87,7 @@ export class MeService {
   async getMe(userId: string): Promise<AuthUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, displayName: true, onboardingDone: true },
+      select: { id: true, email: true, displayName: true, onboardingDone: true, streakCount: true },
     });
     if (!user) throw new NotFoundException('User not found');
     return {
@@ -95,6 +95,7 @@ export class MeService {
       email: user.email,
       ...(user.displayName !== null && { displayName: user.displayName }),
       onboardingDone: user.onboardingDone,
+      streakCount: user.streakCount,
     };
   }
 
@@ -103,7 +104,14 @@ export class MeService {
     const [user, budget, holdings, orders, watchlistRows, courseProgresses] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true, displayName: true, createdAt: true, preferredTier: true },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          createdAt: true,
+          preferredTier: true,
+          streakCount: true,
+        },
       }),
       this.prisma.monthlyBudget.findFirst({
         where: { userId, status: 'ACTIVE' },
@@ -152,6 +160,7 @@ export class MeService {
       email: user.email,
       ...(user.displayName !== null ? { displayName: user.displayName } : {}),
       memberSince: user.createdAt.getTime(),
+      streakCount: user.streakCount,
       stats: {
         totalReturnInr: realizedPnl,
         totalReturnPct,

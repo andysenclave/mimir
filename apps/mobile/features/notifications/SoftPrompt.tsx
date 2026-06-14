@@ -6,7 +6,7 @@ import { Bell } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface SoftPromptProps {
   onAccept: () => void;
@@ -19,6 +19,7 @@ export function SoftPrompt({
   onDefer,
   primaryStockSymbol,
 }: SoftPromptProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <View className="rounded-xl border border-border-subtle bg-bg-secondary p-5">
       <View className="mb-3 h-10 w-10 items-center justify-center rounded-md bg-accent/15">

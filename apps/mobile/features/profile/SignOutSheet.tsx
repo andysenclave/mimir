@@ -8,7 +8,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface SignOutSheetProps {
   onConfirm: () => Promise<void> | void;
@@ -16,6 +16,7 @@ interface SignOutSheetProps {
 }
 
 export function SignOutSheet({ onConfirm, onCancel }: SignOutSheetProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const sheetRef = useRef<BottomSheet>(null);
   const [signingOut, setSigningOut] = useState(false);
 

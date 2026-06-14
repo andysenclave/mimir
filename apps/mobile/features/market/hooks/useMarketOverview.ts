@@ -12,8 +12,8 @@
 // Types: codegen generates query-scoped types (only selected fields). We derive
 // and re-export these so downstream components have a stable, correct contract.
 
-import { useEffect, useMemo, useState } from 'react';
 import { isMarketOpen } from '@mimir/shared';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   MarketOverviewDocument,

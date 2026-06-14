@@ -9,9 +9,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BookOpen, Sparkles } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 export function LearnPlaceholder(): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <View className="flex-1 items-center justify-center px-6">
       <View

@@ -35,6 +35,7 @@ type AuthUser {
   email: String!
   id: ID!
   onboardingDone: Boolean!
+  streakCount: Float!
 }
 
 input CompleteLessonInput {
@@ -122,6 +123,9 @@ type Lesson {
 
 type MarketOverviewGql {
   fetchedAt: DateTime!
+
+  """Global indices (S&P 500, NASDAQ)."""
+  globalIndices: [IndexQuoteGql!]!
   indices: [IndexQuoteGql!]!
   sectors: [SectorPerformanceGql!]!
   topGainers: [StockQuoteGql!]!
@@ -580,6 +584,7 @@ type UserProfileGql {
   id: ID!
   memberSince: Float!
   stats: ProfileStatsGql!
+  streakCount: Float!
   watchlist: [WatchlistItemGql!]!
 }
 

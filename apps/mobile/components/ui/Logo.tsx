@@ -5,7 +5,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -18,6 +18,7 @@ const SIZE_MAP = {
 } as const;
 
 export function Logo({ size = 'md' }: LogoProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const { box, font } = SIZE_MAP[size];
   // Width/height come from props, not from tokens — acceptable inline per
   // prompt 22 (numerics computed from props are exempt).

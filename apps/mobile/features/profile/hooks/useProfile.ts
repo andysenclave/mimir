@@ -2,8 +2,9 @@
 // Apollo owns all server state (prompt 16). Subscription for watchlist LTP ticks
 // skips when screen is not focused — same useFocusEffect pattern as usePortfolio (MM-031).
 
-import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { useState, useCallback } from 'react';
+
 import {
   useProfileQuery,
   useStockPriceUpdateSubscription,

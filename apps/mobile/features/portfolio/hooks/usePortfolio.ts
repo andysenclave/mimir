@@ -5,15 +5,17 @@
 //   • subscribe only when Portfolio screen is focused (useFocusEffect)
 //   • unsubscribes automatically on blur (subscription cleanup in useEffect return)
 
-import { useState, useCallback } from 'react';
+import { isMarketOpen } from '@mimir/shared';
 import { useFocusEffect } from 'expo-router';
+import { useState, useCallback } from 'react';
+
 import {
   PortfolioDocument,
   usePortfolioQuery,
   usePortfolioUpdateSubscription,
   type PortfolioQuery,
 } from '@/graphql/generated';
-import { isMarketOpen } from '@mimir/shared';
+
 
 export type PortfolioData = NonNullable<PortfolioQuery['portfolio']>;
 export type PortfolioHolding = PortfolioData['holdings'][number];

@@ -11,7 +11,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import type { MarketStockQuote } from './hooks/useMarketOverview';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 // ─── Row ──────────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,9 @@ function MoverRow({ stock, isGainer }: MoverRowProps): React.JSX.Element {
   return (
     <Pressable
       className="flex-row items-center justify-between py-3 active:bg-bg-hover"
-      onPress={() => router.push({ pathname: '/invest/[symbol]', params: { symbol: stock.symbol } })}
+      onPress={() =>
+        router.push({ pathname: '/invest/[symbol]', params: { symbol: stock.symbol } })
+      }
     >
       <View className="flex-1 pr-3">
         <Text className="font-sans text-sm font-medium text-text-primary" numberOfLines={1}>
@@ -41,9 +43,7 @@ function MoverRow({ stock, isGainer }: MoverRowProps): React.JSX.Element {
       </View>
       <View className="items-end">
         <Text className="font-mono text-sm text-text-primary">{formatINR(stock.ltp)}</Text>
-        <Text
-          className={clsx('font-mono text-xs', isGainer ? 'text-gain' : 'text-loss')}
-        >
+        <Text className={clsx('font-mono text-xs', isGainer ? 'text-gain' : 'text-loss')}>
           {sign}
           {changePct.toFixed(2)}%
         </Text>
@@ -61,6 +61,7 @@ interface MoverSectionProps {
 }
 
 function MoverSection({ label, stocks, isGainer }: MoverSectionProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const iconColor = isGainer ? tokens.gain : tokens.loss;
   const Icon = isGainer ? TrendingUp : TrendingDown;
 

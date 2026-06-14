@@ -2,14 +2,20 @@
 // Bottom sheet triggered from OrderForm CTA (via SheetProvider).
 // Uses @gorhom/bottom-sheet. Prompt 23 (dialog-provider-pattern).
 
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import { formatINR } from '@mimir/shared';
+import { CheckCircle } from 'lucide-react-native';
 import { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withDelay } from 'react-native-reanimated';
-import { CheckCircle } from 'lucide-react-native';
-import { formatINR } from '@mimir/shared';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withDelay,
+} from 'react-native-reanimated';
+
 import { Button } from '@/components/ui/Button';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface OrderConfirmationSheetProps {
   symbol: string;
@@ -34,13 +40,13 @@ export function OrderConfirmationSheet({
   onConfirm,
   onCancel,
 }: OrderConfirmationSheetProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const sheetRef = useRef<BottomSheet>(null);
   const [state, setState] = useState<SheetState>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const orderValue = quantity * ltp;
-  const cashAfter =
-    orderType === 'BUY' ? cashRemaining - orderValue : cashRemaining + orderValue;
+  const cashAfter = orderType === 'BUY' ? cashRemaining - orderValue : cashRemaining + orderValue;
 
   const checkScale = useSharedValue(0);
   const checkStyle = useAnimatedStyle(() => ({ transform: [{ scale: checkScale.value }] }));
@@ -78,9 +84,7 @@ export function OrderConfirmationSheet({
             <Animated.View style={checkStyle}>
               <CheckCircle size={56} color={tokens.gain} />
             </Animated.View>
-            <Text className="text-text-primary font-sans font-semibold text-lg">
-              Order placed!
-            </Text>
+            <Text className="text-text-primary font-sans font-semibold text-lg">Order placed!</Text>
           </View>
         ) : (
           <>
@@ -91,7 +95,7 @@ export function OrderConfirmationSheet({
             {/* Summary */}
             <View className="bg-bg-tertiary rounded-lg border border-border-subtle p-4 gap-3">
               <View>
-                <Text style={{ color: tokens.text.primary, fontFamily: 'Menlo', fontSize: 22, fontWeight: '700' }}>
+                <Text className="text-text-primary font-mono text-[22px] font-bold">
                   {orderType} {symbol}
                 </Text>
                 {!!name && (
@@ -105,7 +109,7 @@ export function OrderConfirmationSheet({
               <Row label="Total" value={formatINR(orderValue)} mono large />
               <View className="h-px bg-border-subtle" />
               <Row label="Cash before" value={formatINR(cashRemaining)} mono />
-              <Row label="Cash after" value={formatINR(cashAfter)} mono {...(cashAfter < 0 ? { color: tokens.loss } : {})} />
+              <Row label="Cash after" value={formatINR(cashAfter)} mono negative={cashAfter < 0} />
             </View>
 
             <Text className="text-text-tertiary font-sans text-xs text-center">
@@ -144,27 +148,23 @@ function Row({
   value,
   mono,
   large,
-  color,
+  negative,
 }: {
   label: string;
   value: string;
   mono?: boolean;
   large?: boolean;
-  color?: string;
+  negative?: boolean;
 }): React.JSX.Element {
+  const valueClass = [
+    mono ? 'font-mono' : 'font-sans',
+    large ? 'text-[17px] font-semibold' : 'text-[15px] font-normal',
+    negative ? 'text-loss' : 'text-text-primary',
+  ].join(' ');
   return (
     <View className="flex-row justify-between items-center">
       <Text className="text-text-secondary font-sans text-sm">{label}</Text>
-      <Text
-        style={{
-          color: color ?? tokens.text.primary,
-          fontFamily: mono ? 'Menlo' : undefined,
-          fontSize: large ? 17 : 15,
-          fontWeight: large ? '600' : '400',
-        }}
-      >
-        {value}
-      </Text>
+      <Text className={valueClass}>{value}</Text>
     </View>
   );
 }

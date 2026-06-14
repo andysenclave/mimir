@@ -1,12 +1,16 @@
 // MM-036 — Profile screen assembler (prompt 20: SRP, < 150 lines).
 
 import { ScrollView, RefreshControl, View, Text } from 'react-native';
-import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { ProfileUserCard } from './ProfileUserCard';
-import { ProfileStatsRow } from './ProfileStatsRow';
-import { ProfileWatchlistSection } from './ProfileWatchlistSection';
+
+import { ProfileLiveTicker } from './ProfileLiveTicker';
 import { ProfileSettingsSection } from './ProfileSettingsSection';
+import { ProfileStatsRow } from './ProfileStatsRow';
+import { ProfileUserCard } from './ProfileUserCard';
+import { ProfileWatchlistSection } from './ProfileWatchlistSection';
+
 import type { ProfileData } from './hooks/useProfile';
+
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
 
 const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION ?? '1.0.0';
 
@@ -31,6 +35,7 @@ export function ProfileContent({
         <ProfileUserCard profile={profile} />
         <ProfileStatsRow stats={profile.stats} />
         <ProfileWatchlistSection watchlist={profile.watchlist} onWatchlistChanged={onRefresh} />
+        <ProfileLiveTicker />
         <ProfileSettingsSection />
 
         {/* Compliance footer — CLAUDE.md §19 */}

@@ -4,6 +4,7 @@ query Me {
     email
     displayName
     onboardingDone
+    streakCount
   }
 }
 

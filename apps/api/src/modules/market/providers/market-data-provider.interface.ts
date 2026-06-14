@@ -32,7 +32,8 @@ export interface SectorPerformance {
 }
 
 export interface MarketOverview {
-  indices: IndexQuote[];            // NIFTY 50, SENSEX, BANK NIFTY + global
+  indices: IndexQuote[];            // NIFTY 50, SENSEX, BANK NIFTY
+  globalIndices: IndexQuote[];      // S&P 500, NASDAQ — populated by the service
   topGainers: StockQuote[];         // top 5 by changePct
   topLosers: StockQuote[];          // bottom 5 by changePct
   sectors: SectorPerformance[];     // 10 NSE sectors
@@ -50,4 +51,12 @@ export abstract class MarketDataProvider {
   abstract getMarketOverview(): Promise<MarketOverview>;
   abstract getIndexQuote(indexSymbol: string): Promise<IndexQuote>;
   abstract getIntradayData(symbol: string): Promise<IntradayPoint[]>;
+
+  /**
+   * Global indices (S&P 500, NASDAQ). Only some providers support these (Yahoo);
+   * the default is empty so NSE-only providers don't have to implement it.
+   */
+  getGlobalIndices(): Promise<IndexQuote[]> {
+    return Promise.resolve([]);
+  }
 }

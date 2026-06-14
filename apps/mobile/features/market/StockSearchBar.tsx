@@ -3,7 +3,7 @@
 import { Search, X } from 'lucide-react-native';
 import { Pressable, TextInput, View } from 'react-native';
 
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface StockSearchBarProps {
   query: string;
@@ -11,7 +11,12 @@ interface StockSearchBarProps {
   onClear: () => void;
 }
 
-export function StockSearchBar({ query, onChange, onClear }: StockSearchBarProps): React.JSX.Element {
+export function StockSearchBar({
+  query,
+  onChange,
+  onClear,
+}: StockSearchBarProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   return (
     <View className="px-4 pt-3 pb-2">
       <View className="flex-row items-center gap-2 rounded-xl border border-border-subtle bg-bg-secondary px-3">

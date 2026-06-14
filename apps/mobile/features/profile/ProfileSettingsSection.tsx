@@ -2,12 +2,20 @@
 // MM-059 — sign out opens a confirmation bottom sheet (via SheetProvider), not a native Alert.
 
 import { useRouter } from 'expo-router';
-import { Bell, ChevronRight, LogOut, Shield, SlidersHorizontal, User } from 'lucide-react-native';
+import {
+  Bell,
+  ChevronRight,
+  LogOut,
+  Palette,
+  Shield,
+  SlidersHorizontal,
+  User,
+} from 'lucide-react-native';
 import { View, Text, Pressable } from 'react-native';
 
 import { useSheet } from '@/features/sheets/SheetProvider';
 import { useAuth } from '@/lib/auth/AuthProvider';
-import { tokens } from '@/theme/tokens';
+import { useThemeTokens } from '@/theme/use-theme-tokens';
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -16,7 +24,13 @@ interface SettingsRowProps {
   destructive?: boolean;
 }
 
-function SettingsRow({ icon, label, onPress, destructive = false }: SettingsRowProps): React.JSX.Element {
+function SettingsRow({
+  icon,
+  label,
+  onPress,
+  destructive = false,
+}: SettingsRowProps): React.JSX.Element {
+  const tokens = useThemeTokens();
   const labelClass = destructive ? 'text-loss' : 'text-text-primary';
 
   return (
@@ -26,14 +40,13 @@ function SettingsRow({ icon, label, onPress, destructive = false }: SettingsRowP
     >
       <View className="w-6 items-center">{icon}</View>
       <Text className={`flex-1 text-sm font-medium ${labelClass}`}>{label}</Text>
-      {!destructive && (
-        <ChevronRight color={tokens.text.tertiary} size={16} strokeWidth={1.75} />
-      )}
+      {!destructive && <ChevronRight color={tokens.text.tertiary} size={16} strokeWidth={1.75} />}
     </Pressable>
   );
 }
 
 export function ProfileSettingsSection(): React.JSX.Element {
+  const tokens = useThemeTokens();
   const router = useRouter();
   const { signOut } = useAuth();
   const { openSheet } = useSheet();
@@ -62,6 +75,11 @@ export function ProfileSettingsSection(): React.JSX.Element {
           icon={<Bell color={tokens.text.secondary} size={18} strokeWidth={1.75} />}
           label="Notifications"
           onPress={() => router.push('/profile/notifications')}
+        />
+        <SettingsRow
+          icon={<Palette color={tokens.text.secondary} size={18} strokeWidth={1.75} />}
+          label="Appearance"
+          onPress={() => router.push('/profile/appearance')}
         />
         <SettingsRow
           icon={<Shield color={tokens.text.secondary} size={18} strokeWidth={1.75} />}
