@@ -28,7 +28,7 @@ import { setSentryUser } from '@/lib/sentry/init';
 
 const AuthContext = createContext<AuthAPI | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
+export function AuthProvider({ children }: Readonly<{ children: React.ReactNode }>): React.JSX.Element {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

@@ -30,7 +30,6 @@ async function bootstrap(): Promise<void> {
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
-
   console.info(`[mimir-api] listening on :${port}`);
 }
 
