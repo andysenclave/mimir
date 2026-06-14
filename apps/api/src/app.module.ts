@@ -39,7 +39,7 @@ import { PubSubModule } from './pubsub/pubsub.module';
         return {
           connection: {
             host: parsed.hostname,
-            port: parseInt(parsed.port || '6379', 10),
+            port: Number.parseInt(parsed.port || '6379', 10),
             password: parsed.password || undefined,
             maxRetriesPerRequest: null,
           },
