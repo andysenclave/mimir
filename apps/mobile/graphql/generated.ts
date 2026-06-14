@@ -19,6 +19,8 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean };
   Int: { input: number; output: number };
   Float: { input: number; output: number };
+  /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
+  DateTime: { input: string; output: string };
 };
 
 export type AuthUser = {
@@ -31,14 +33,37 @@ export type AuthUser = {
 
 export type CompleteOnboardingInput = {
   ageAttested: Scalars['Boolean']['input'];
+  /** TIER_10K | TIER_25K | TIER_50K | TIER_1L | CUSTOM */
   budgetTierId: Scalars['String']['input'];
+  /** Required when budgetTierId === CUSTOM */
   customAmount?: InputMaybe<Scalars['Int']['input']>;
   termsAccepted: Scalars['Boolean']['input'];
 };
 
+export type IndexQuoteGql = {
+  __typename?: 'IndexQuoteGql';
+  change: Scalars['Float']['output'];
+  changePct: Scalars['Float']['output'];
+  fetchedAt: Scalars['DateTime']['output'];
+  ltp: Scalars['Float']['output'];
+  name: Scalars['String']['output'];
+  symbol: Scalars['String']['output'];
+};
+
+export type MarketOverviewGql = {
+  __typename?: 'MarketOverviewGql';
+  fetchedAt: Scalars['DateTime']['output'];
+  indices: Array<IndexQuoteGql>;
+  sectors: Array<SectorPerformanceGql>;
+  topGainers: Array<StockQuoteGql>;
+  topLosers: Array<StockQuoteGql>;
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
+  /** Complete onboarding by setting the monthly budget tier. Creates the first ACTIVE MonthlyBudget and flips User.onboardingDone. Idempotent. */
   completeOnboarding: OnboardingResult;
+  /** Register an Expo push token for the authenticated user. Idempotent on (userId, expoPushToken). */
   registerPushDevice: UserDevice;
 };
 
@@ -52,10 +77,14 @@ export type MutationRegisterPushDeviceArgs = {
 
 export type OnboardingBudgetSummary = {
   __typename?: 'OnboardingBudgetSummary';
+  /** Allocated cash in INR (Decimal serialized as paise/INR int) */
   amount: Scalars['Int']['output'];
+  /** ISO date — end of the active cycle */
   cycleEnd: Scalars['String']['output'];
+  /** ISO date — start of the active cycle */
   cycleStart: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  /** TIER_10K | TIER_25K | TIER_50K | TIER_1L | CUSTOM */
   tier: Scalars['String']['output'];
 };
 
@@ -67,18 +96,67 @@ export type OnboardingResult = {
 
 export type Query = {
   __typename?: 'Query';
+  /** Current market overview: indices, sectors, top movers. */
+  marketOverview: MarketOverviewGql;
+  /** The currently authenticated user. Requires a valid JWT. */
   me: AuthUser;
+  /** Last-known snapshot for a single NSE symbol. */
+  stock: Maybe<StockQuoteGql>;
+};
+
+export type QueryStockArgs = {
+  symbol: Scalars['String']['input'];
 };
 
 export type RegisterPushDeviceInput = {
   appVersion?: InputMaybe<Scalars['String']['input']>;
+  /** Expo push token (ExponentPushToken[...]). */
   expoPushToken: Scalars['String']['input'];
+  /** IOS | ANDROID | WEB */
   platform: Scalars['String']['input'];
+};
+
+export type SectorPerformanceGql = {
+  __typename?: 'SectorPerformanceGql';
+  changePct: Scalars['Float']['output'];
+  displayName: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+};
+
+export type StockPriceUpdate = {
+  __typename?: 'StockPriceUpdate';
+  change: Scalars['Float']['output'];
+  changePct: Scalars['Float']['output'];
+  fetchedAt: Scalars['String']['output'];
+  ltp: Scalars['Float']['output'];
+  symbol: Scalars['String']['output'];
+};
+
+export type StockQuoteGql = {
+  __typename?: 'StockQuoteGql';
+  change: Maybe<Scalars['Float']['output']>;
+  changePct: Maybe<Scalars['Float']['output']>;
+  close: Maybe<Scalars['Float']['output']>;
+  fetchedAt: Scalars['DateTime']['output'];
+  high: Maybe<Scalars['Float']['output']>;
+  low: Maybe<Scalars['Float']['output']>;
+  ltp: Scalars['Float']['output'];
+  name: Maybe<Scalars['String']['output']>;
+  open: Maybe<Scalars['Float']['output']>;
+  symbol: Scalars['String']['output'];
+  volume: Maybe<Scalars['Float']['output']>;
 };
 
 export type Subscription = {
   __typename?: 'Subscription';
+  /** Server-driven heartbeat (MM-006 smoke test). Removed when MM-023 lands. */
   serverHeartbeat: Scalars['String']['output'];
+  /** Live LTP ticks for the requested symbols (15s cadence during market hours). */
+  stockPrice: StockPriceUpdate;
+};
+
+export type SubscriptionStockPriceArgs = {
+  symbols: Array<Scalars['String']['input']>;
 };
 
 export type UserDevice = {
