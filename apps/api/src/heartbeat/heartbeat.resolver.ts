@@ -8,7 +8,7 @@ import { Resolver, Subscription } from '@nestjs/graphql';
 
 import { PUB_SUB } from '../pubsub/pubsub.module';
 
-import type { PubSub } from 'graphql-subscriptions';
+import type { PubSubEngine } from 'graphql-subscriptions';
 
 const HEARTBEAT_EVENT = 'serverHeartbeat';
 
@@ -16,7 +16,7 @@ const HEARTBEAT_EVENT = 'serverHeartbeat';
 export class HeartbeatResolver implements OnModuleInit, OnModuleDestroy {
   private intervalRef: NodeJS.Timeout | null = null;
 
-  constructor(@Inject(PUB_SUB) private readonly pubSub: PubSub) {}
+  constructor(@Inject(PUB_SUB) private readonly pubSub: PubSubEngine) {}
 
   onModuleInit(): void {
     // Emit every 5s for the lifetime of the process.

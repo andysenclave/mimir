@@ -20,6 +20,28 @@ input CompleteOnboardingInput {
   termsAccepted: Boolean!
 }
 
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type IndexQuoteGql {
+  change: Float!
+  changePct: Float!
+  fetchedAt: DateTime!
+  ltp: Float!
+  name: String!
+  symbol: String!
+}
+
+type MarketOverviewGql {
+  fetchedAt: DateTime!
+  indices: [IndexQuoteGql!]!
+  sectors: [SectorPerformanceGql!]!
+  topGainers: [StockQuoteGql!]!
+  topLosers: [StockQuoteGql!]!
+}
+
 type Mutation {
   """
   Complete onboarding by setting the monthly budget tier. Creates the first ACTIVE MonthlyBudget and flips User.onboardingDone. Idempotent.
@@ -53,8 +75,14 @@ type OnboardingResult {
 }
 
 type Query {
+  """Current market overview: indices, sectors, top movers."""
+  marketOverview: MarketOverviewGql!
+
   """The currently authenticated user. Requires a valid JWT."""
   me: AuthUser!
+
+  """Last-known snapshot for a single NSE symbol."""
+  stock(symbol: String!): StockQuoteGql
 }
 
 input RegisterPushDeviceInput {
@@ -67,11 +95,44 @@ input RegisterPushDeviceInput {
   platform: String!
 }
 
+type SectorPerformanceGql {
+  changePct: Float!
+  displayName: String!
+  name: String!
+}
+
+type StockPriceUpdate {
+  change: Float!
+  changePct: Float!
+  fetchedAt: String!
+  ltp: Float!
+  symbol: String!
+}
+
+type StockQuoteGql {
+  change: Float
+  changePct: Float
+  close: Float
+  fetchedAt: DateTime!
+  high: Float
+  low: Float
+  ltp: Float!
+  name: String
+  open: Float
+  symbol: String!
+  volume: Float
+}
+
 type Subscription {
   """
   Server-driven heartbeat (MM-006 smoke test). Removed when MM-023 lands.
   """
   serverHeartbeat: String!
+
+  """
+  Live LTP ticks for the requested symbols (15s cadence during market hours).
+  """
+  stockPrice(symbols: [String!]!): StockPriceUpdate!
 }
 
 type UserDevice {

@@ -1,27 +1,32 @@
 // MarketService — domain logic for market data polling and persistence.
 // Prompt 14 (how-to-structure-a-service-method.md): business logic lives here, not in the resolver.
 // MM-021: pollAndPublish + snapshot upsert.
+// MM-023: publishTick now uses RedisPubSub (PUB_SUB token); getMarketOverview with TTL cache.
 
 import { isMarketOpen } from '@mimir/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-
 import { PrismaService } from '../../prisma/prisma.service';
+import { PUB_SUB } from '../../pubsub/pubsub.module';
 
-import { MarketDataProvider, type StockQuote } from './providers/market-data-provider.interface';
+import { StockQuoteGql } from './entities/stock-quote.entity';
+import { MarketDataProvider, type MarketOverview, type StockQuote } from './providers/market-data-provider.interface';
 
-export const REDIS_PUBLISHER = 'REDIS_PUBLISHER';
-
-// Minimal structural type for the Redis pub/sub publisher.
-// Avoids importing IORedis directly (bullmq bundles its own copy → type clash).
-export interface RedisPublisher {
-  publish(channel: string, message: string): Promise<number>;
-}
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 export interface PollResult {
   published: number;
   skipped: number;
   failed: number;
+}
+
+// Channel name that MarketResolver subscribes to for stock ticks.
+export const STOCK_TICK_CHANNEL = 'stock:any';
+
+// Simple in-process TTL cache entry.
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
 }
 
 @Injectable()
@@ -32,10 +37,13 @@ export class MarketService {
   // Key: symbol, Value: { ltp, minuteKey }. Resets on process restart (acceptable).
   private readonly lastPublished = new Map<string, { ltp: number; minuteKey: number }>();
 
+  // Simple TTL cache for marketOverview (30s market hours, 5min off-hours).
+  private overviewCache: CacheEntry<MarketOverview> | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly provider: MarketDataProvider,
-    @Inject(REDIS_PUBLISHER) private readonly redisPublisher: RedisPublisher,
+    @Inject(PUB_SUB) private readonly pubSub: RedisPubSub,
   ) {}
 
   /**
@@ -61,12 +69,12 @@ export class MarketService {
       if (symbol === undefined) continue;
 
       if (result.status === 'rejected') {
-        this.logger.warn(`Quote fetch failed for ${symbol}`, { reason: String((result as PromiseRejectedResult).reason) });
+        this.logger.warn(`Quote fetch failed for ${symbol}`, { reason: String((result).reason) });
         failed++;
         continue;
       }
 
-      const quote = (result as PromiseFulfilledResult<StockQuote>).value;
+      const quote = (result).value;
 
       if (this.isDuplicate(symbol, quote.ltp, now)) {
         skipped++;
@@ -85,22 +93,55 @@ export class MarketService {
     return { published, skipped, failed };
   }
 
-  /** Retrieve the last-known snapshot for a symbol (used by GraphQL query in MM-023). */
+  /** Retrieve the last-known snapshot for a symbol, mapped to GraphQL entity. */
+  async getStockQuote(symbol: string): Promise<StockQuoteGql | null> {
+    const row = await this.prisma.marketSnapshot.findUnique({ where: { symbol } });
+    if (!row) return null;
+    return {
+      symbol: row.symbol,
+      ltp: row.ltp.toNumber(),
+      change: row.change?.toNumber(),
+      changePct: row.changePct?.toNumber(),
+      open: row.open?.toNumber(),
+      high: row.high?.toNumber(),
+      low: row.low?.toNumber(),
+      close: row.close?.toNumber(),
+      volume: row.volume !== null && row.volume !== undefined ? Number(row.volume) : undefined,
+      fetchedAt: row.fetchedAt,
+    };
+  }
+
+  /** @internal Used by unit tests for snapshot existence check. */
   async getSnapshot(symbol: string) {
     return this.prisma.marketSnapshot.findUnique({ where: { symbol } });
   }
 
+  /**
+   * Returns market overview (indices + sectors + top movers).
+   * Cached in-process: 30s during market hours, 5min off-hours.
+   */
+  async getMarketOverview(now: Date = new Date()): Promise<MarketOverview> {
+    const ttlMs = isMarketOpen(now) ? 30_000 : 300_000;
+    if (this.overviewCache && this.overviewCache.expiresAt > now.getTime()) {
+      return this.overviewCache.data;
+    }
+    const data = await this.provider.getMarketOverview();
+    this.overviewCache = { data, expiresAt: now.getTime() + ttlMs };
+    return data;
+  }
+
   // ─── Private ──────────────────────────────────────────────────────────────
 
-  private async publishTick(symbol: string, quote: StockQuote): Promise<void> {
-    const payload = JSON.stringify({
-      symbol: quote.symbol,
-      ltp: quote.ltp,
-      change: quote.change,
-      changePct: quote.changePct,
-      fetchedAt: quote.fetchedAt.toISOString(),
+  private async publishTick(_symbol: string, quote: StockQuote): Promise<void> {
+    await this.pubSub.publish(STOCK_TICK_CHANNEL, {
+      stockPrice: {
+        symbol: quote.symbol,
+        ltp: quote.ltp,
+        change: quote.change ?? 0,
+        changePct: quote.changePct ?? 0,
+        fetchedAt: quote.fetchedAt.toISOString(),
+      },
     });
-    await this.redisPublisher.publish(`stock:${symbol}`, payload);
   }
 
   private async persistSnapshot(quote: StockQuote): Promise<void> {
@@ -139,7 +180,7 @@ export class MarketService {
   private isDuplicate(symbol: string, ltp: number, now: Date): boolean {
     const minuteKey = Math.floor(now.getTime() / 60_000);
     const last = this.lastPublished.get(symbol);
-    if (last !== undefined && last.ltp === ltp && last.minuteKey === minuteKey) {
+    if (last?.ltp === ltp && last.minuteKey === minuteKey) {
       return true;
     }
     this.lastPublished.set(symbol, { ltp, minuteKey });

@@ -23,6 +23,9 @@ import { PubSubModule } from './pubsub/pubsub.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      // Load .env first, then .env.local — local values take precedence.
+      // .env.local is gitignored and holds real dev secrets (CLAUDE.md §17).
+      envFilePath: ['.env', '.env.local'],
       validate: (env) => envSchema.parse(env),
     }),
 
@@ -39,7 +42,7 @@ import { PubSubModule } from './pubsub/pubsub.module';
         return {
           connection: {
             host: parsed.hostname,
-            port: parseInt(parsed.port || '6379', 10),
+            port: Number.parseInt(parsed.port || '6379', 10),
             password: parsed.password || undefined,
             maxRetriesPerRequest: null,
           },
