@@ -1,8 +1,7 @@
-// MarketModule — MM-021.
+// MarketModule — MM-021/MM-022.
 // Prompt 10 (how-to-scaffold-a-new-module.md).
 // Owns: market data polling, MarketSnapshot persistence, MarketDataProvider abstraction.
-// Concrete provider implementations land in MM-022 (NseIndia + Yahoo fallback).
-// In Phase 1 dev, MockMarketDataProvider is the stand-in.
+// MM-022: FallbackMarketDataProvider (NseIndia primary + Yahoo fallback) wired as the provider.
 
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
@@ -12,8 +11,10 @@ import { PrismaModule } from '../../prisma/prisma.module';
 
 import { MarketService, REDIS_PUBLISHER, type RedisPublisher } from './market.service';
 import { MarketDataPollerProcessor, MARKET_DATA_POLL_QUEUE } from './processors/market-data-poller.processor';
+import { FallbackMarketDataProvider } from './providers/fallback-market-data.provider';
 import { MarketDataProvider } from './providers/market-data-provider.interface';
-import { MockMarketDataProvider } from './providers/mock-market-data.provider';
+import { NseIndiaProvider } from './providers/nse-india.provider';
+import { YahooFinanceProvider } from './providers/yahoo-finance.provider';
 
 @Module({
   imports: [
@@ -24,14 +25,16 @@ import { MockMarketDataProvider } from './providers/mock-market-data.provider';
   providers: [
     MarketService,
     MarketDataPollerProcessor,
-    // Swap MockMarketDataProvider → NseIndiaProvider (with FallbackMarketDataProvider) in MM-022.
+    // MM-022: real providers. NseIndiaProvider is primary, YahooFinanceProvider is fallback.
+    // FallbackMarketDataProvider wraps both with a circuit breaker.
+    NseIndiaProvider,
+    YahooFinanceProvider,
     {
       provide: MarketDataProvider,
-      useClass: MockMarketDataProvider,
+      useClass: FallbackMarketDataProvider,
     },
     // Dedicated Redis connection for raw pub/sub publishing (stock tick channels).
-    // Separate from BullMQ's connection. Uses require() to avoid the dual-ioredis type clash
-    // (bullmq bundles its own copy; @ts-expect-error is unnecessary since we type as RedisPublisher).
+    // Separate from BullMQ's connection. Uses require() to avoid dual-ioredis type clash.
     {
       provide: REDIS_PUBLISHER,
       useFactory: (config: ConfigService): RedisPublisher => {
