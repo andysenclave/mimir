@@ -2,20 +2,13 @@
 // elsewhere in the app (CLAUDE.md §14, prompt 21) — auth is the only allowed
 // REST surface and is isolated to this file.
 
-import Constants from 'expo-constants';
+import { resolveApiUrl } from '../api-host';
 
 import type { Attestations } from './types';
 
-function readEnvUrl(name: string, fallback: string): string {
-  const fromExtra = (Constants.expoConfig?.extra as Record<string, string> | undefined)?.[name];
-  const fromProcess = (process.env as Record<string, string | undefined>)[name];
-  return fromExtra ?? fromProcess ?? fallback;
-}
-
-const API_URL = readEnvUrl('EXPO_PUBLIC_API_URL', 'http://localhost:3000/graphql').replace(
-  /\/graphql\/?$/,
-  '',
-);
+// Base URL for the REST /auth/* endpoints (no /graphql suffix). Same host
+// resolution as the Apollo client so login/logout track the live dev host too.
+const API_URL = resolveApiUrl('http', '/graphql', 'EXPO_PUBLIC_API_URL').replace(/\/graphql\/?$/, '');
 
 export type AuthResponse = {
   accessToken: string;

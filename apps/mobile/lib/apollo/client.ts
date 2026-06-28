@@ -6,21 +6,15 @@
 import { ApolloClient, HttpLink, InMemoryCache, from, split } from '@apollo/client';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { getMainDefinition } from '@apollo/client/utilities';
-import Constants from 'expo-constants';
 import { createClient } from 'graphql-ws';
 
+import { resolveApiUrl } from '../api-host';
 import { tokenStorage } from '../auth/storage';
 
 import { authLink, errorLink } from './links';
 
-function readEnvUrl(name: string, fallback: string): string {
-  const fromExpoExtra = (Constants.expoConfig?.extra as Record<string, string> | undefined)?.[name];
-  const fromProcess = (process.env as Record<string, string | undefined>)[name];
-  return fromExpoExtra ?? fromProcess ?? fallback;
-}
-
-const HTTP_URL = readEnvUrl('EXPO_PUBLIC_API_URL', 'http://localhost:3000/graphql');
-const WS_URL = readEnvUrl('EXPO_PUBLIC_API_WS_URL', 'ws://localhost:3000/graphql');
+const HTTP_URL = resolveApiUrl('http', '/graphql', 'EXPO_PUBLIC_API_URL');
+const WS_URL = resolveApiUrl('ws', '/graphql', 'EXPO_PUBLIC_API_WS_URL');
 
 const httpLink = new HttpLink({
   uri: HTTP_URL,
